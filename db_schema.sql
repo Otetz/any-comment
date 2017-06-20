@@ -20,14 +20,18 @@ CREATE TABLE comments
   datetime  TIMESTAMP DEFAULT now() NOT NULL,
   parentid  INTEGER DEFAULT 0       NOT NULL
     CONSTRAINT comments_entities_entityid_fk REFERENCES entities,
+  text      TEXT DEFAULT ''::text   NOT NULL,
   deleted   BOOLEAN DEFAULT FALSE   NOT NULL
 ) INHERITS (entities);
 COMMENT ON COLUMN comments.userid IS 'Автор комментария';
 
+
 CREATE TABLE posts
 (
-  postid SERIAL NOT NULL
-    CONSTRAINT posts_pkey PRIMARY KEY
+  postid SERIAL                NOT NULL
+    CONSTRAINT posts_pkey PRIMARY KEY,
+  text   TEXT DEFAULT ''::text NOT NULL,
+  title  TEXT DEFAULT ''::text NOT NULL
 ) INHERITS (entities);
 
 CREATE TABLE comments_history
@@ -42,6 +46,7 @@ CREATE TABLE comments_history
   datetime    TIMESTAMP               NOT NULL,
   parentid    INTEGER DEFAULT 0       NOT NULL
     CONSTRAINT comments_history_entities_entityid_fk REFERENCES entities,
+  text        TEXT DEFAULT ''::text   NOT NULL,
   ch_datetime TIMESTAMP DEFAULT now() NOT NULL,
   ch_userid   INTEGER                 NOT NULL
 );
