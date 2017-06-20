@@ -2,3 +2,4 @@ tqdm==4.14.0
 elizabeth==0.4.0
 flask==0.12.2
 psycopg2==2.7.1
+flake8==3.3.0
