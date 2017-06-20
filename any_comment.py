@@ -7,6 +7,8 @@ import flask
 import psycopg2
 from flask import Flask
 
+from app.users import get_users
+
 logger = logging.getLogger(__name__)
 app = Flask(__name__)
 app.config.from_object(os.environ['APP_SETTINGS'])
@@ -30,11 +32,8 @@ def hello_world():
 
 
 @app.route(app.config['PREFIX'] + '/users', methods=['GET'])
-def get_users():
-    conn = db_conn()
-    cur = conn.cursor()
-    cur.execute("SELECT entityid, userid, name FROM users;")
-    users = [{'entityid': rec[0], 'userid': rec[1], 'name': rec[2]} for rec in cur.fetchall()]
+def users_list():
+    users = get_users(db_conn())
     return resp(200, {'response': users})
 
 
