@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>
+        {% if title is defined -%}
+            {{ title }}
+        {% else -%}
+            Documentation
+        {% endif -%}
+    </title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            font-family: Verdana, "Helvetica Neue", Arial, Helvetica, Geneva, sans-serif;
+        }
+
+        body {
+            margin: 10px;
+        }
+
+        div.mapping {
+            margin: 20px 20px;
+        }
+
+        ul.groups:before {
+            content: "Группы методов: ";
+        }
+
+    </style>
+</head>
+<body>
+<h1>
+    {% if title is defined -%}
+        {{ title }}
+    {% else -%}
+        Documentation
+    {% endif -%}
+</h1>
+
+{% with groups=[] %}
+    {% for doc in autodoc %}
+        {% set group = doc.endpoint.split('.')[0] %}
+        {% if group not in groups %}
+            {% set groups = groups.append(group) %}
+        {% endif %}
+    {% endfor %}
+    <div class="mapping">
+        <ul class="groups">
+            {% for group in groups %}
+                <li><a href="/doc/{{ group }}/">{{ group|capitalize }}</a></li>
+            {% endfor %}
+        </ul>
+    </div>
+{% endwith %}
+
+</body>
+</html>
