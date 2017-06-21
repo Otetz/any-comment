@@ -1,4 +1,4 @@
-import json
+import ujson as json
 import logging
 import os
 from typing import Dict, Any
@@ -18,8 +18,15 @@ def db_conn():
     return psycopg2.connect(app.config['DB_URI'])
 
 
+def json_kwargs():
+    return {
+        'ensure_ascii': app.config['JSON_ENSURE_ASCII'],
+        'indent': app.config['JSON_INDENT']
+    }
+
+
 def to_json(data: Dict[str, Any]) -> str:
-    return json.dumps(data) + "\n"
+    return json.dumps(data, **json_kwargs()) + "\n"
 
 
 def resp(code, data):

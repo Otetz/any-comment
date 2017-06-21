@@ -16,6 +16,8 @@ class Config(object):
         dbname=os.environ.get('DB_NAME', 'postgres')
     )
     PREFIX = '/api/1.0'
+    JSON_ENSURE_ASCII = False
+    JSON_INDENT = 0
 
 
 class ProductionConfig(Config):
@@ -25,6 +27,7 @@ class ProductionConfig(Config):
 class DevelopmentConfig(Config):
     DEVELOPMENT = True
     DEBUG = True
+    JSON_INDENT = 2
 
 
 class TestingConfig(Config):
