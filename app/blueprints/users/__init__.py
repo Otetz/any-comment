@@ -4,7 +4,7 @@ import flask
 from flask import Blueprint
 
 from app.common import db_conn, resp, affected_num_to_code
-from app.users import get_users, get_user, User, remove_user, new_user
+from app.users import get_users, get_user, User, remove_user, new_user, update_user
 
 users = Blueprint('users', __name__)
 
@@ -59,3 +59,16 @@ def post_user():
 def delete_user(user_id: int):
     num_deleted = remove_user(db_conn(), user_id)
     return resp(affected_num_to_code(num_deleted), {})
+
+
+@users.route('/users/<int:user_id>', methods=['PUT'])
+def put_user(user_id: int):
+    (data, errors) = user_validate()
+    if errors:
+        return resp(400, {"errors": errors})
+
+    try:
+        num_updated = update_user(db_conn(), user_id, data)
+    except Exception as e:
+        return resp(400, {"errors": str(e)})
+    return resp(affected_num_to_code(num_updated), {})

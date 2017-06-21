@@ -14,7 +14,7 @@ def get_users(conn) -> List[Dict[str, Any]]:
 
 def get_user(conn, user_id: int) -> Optional[Dict[str, Any]]:
     cur = conn.cursor()
-    cur.execute("SELECT entityid, userid, name FROM users WHERE userid=%s;", [user_id])
+    cur.execute("SELECT entityid, userid, name FROM users WHERE userid = %s;", [user_id])
     # noinspection PyProtectedMember,PyCallingNonCallable
     users = [dict(User(*rec)._asdict()) for rec in cur.fetchall()]
     cur.close()
@@ -40,7 +40,19 @@ def remove_user(conn, user_id: int) -> int:
     # TODO: Проверять контент юзера
     try:
         cur = conn.cursor()
-        cur.execute("DELETE FROM users WHERE userid=%s;", [user_id])
+        cur.execute("DELETE FROM users WHERE userid = %s;", [user_id])
+        cnt = cur.rowcount
+        conn.commit()
+        cur.close()
+    except:
+        raise
+    return cnt
+
+
+def update_user(conn, user_id: int, data: Dict[str, Any]) -> int:
+    try:
+        cur = conn.cursor()
+        cur.execute("UPDATE users SET name = %s WHERE userid = %s", [data['name'], user_id])
         cnt = cur.rowcount
         conn.commit()
         cur.close()

@@ -4,7 +4,7 @@ import pytest
 
 import any_comment
 from app.common import db_conn
-from app.users import get_users, get_user, new_user, remove_user
+from app.users import get_users, get_user, new_user, remove_user, update_user
 from elizabeth import Generic
 
 g = Generic('ru')
@@ -98,3 +98,25 @@ def test_remove_user(conn):
 def test_remove_wrong_user(conn):
     cnt = remove_user(conn, 0)
     assert cnt == 0
+
+
+# noinspection PyShadowingNames
+def test_update_user(conn):
+    name1 = name2 = g.personal.full_name(gender=random.choice(['male', 'female']))
+    user1 = new_user(conn, {'name': name1})
+    assert user1 is not None
+    user2 = get_user(conn, user1['userid'])
+    assert user2 is not None
+    assert user2['name'] == name1
+    while name2 == name1:
+        name2 = g.personal.full_name(gender=random.choice(['male', 'female']))
+    res = update_user(conn, user1['userid'], {'name': name2})
+    assert res is not None
+    assert res == 1
+    user3 = get_user(conn, user1['userid'])
+    assert user3 is not None
+    assert user3['userid'] == user1['userid']
+    assert user3['entityid'] == user1['entityid']
+    assert user3['name'] != user1['name']
+    assert user3['name'] == name2
+    remove_user(conn, user1['userid'])
