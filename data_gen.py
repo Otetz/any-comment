@@ -4,7 +4,8 @@ from typing import List
 from elizabeth import Generic
 from tqdm import tqdm
 
-from .any_comment import db_conn
+import any_comment
+from app.common import db_conn
 
 USERS = 20  # type: int
 POSTS = 20  # type: int
@@ -98,15 +99,16 @@ def grow_comments_tree(conn, parents: List[int], users: List[int]) -> None:
 
 
 def main() -> None:
-    conn = db_conn()
+    with any_comment.app.app_context():
+        conn = db_conn()
 
-    clear_tables(conn)
-    users = create_users(conn)
-    posts = create_posts(conn, users)
-    first_lvl_comments = create_firs_lvl_comments(conn, posts, users)
-    grow_comments_tree(conn, first_lvl_comments, users)
+        clear_tables(conn)
+        users = create_users(conn)
+        posts = create_posts(conn, users)
+        first_lvl_comments = create_firs_lvl_comments(conn, posts, users)
+        grow_comments_tree(conn, first_lvl_comments, users)
 
-    conn.close()
+        conn.close()
 
 
 if __name__ == '__main__':

@@ -1,16 +1,14 @@
-import os
-
 import pytest
 
-from any_comment import app, db_conn
+import any_comment
+from app.common import db_conn
 from app.users import get_users
-
-app.config.from_object(os.environ['APP_SETTINGS'])
 
 
 @pytest.fixture
 def conn():
-    return db_conn()
+    with any_comment.app.app_context():
+        return db_conn()
 
 
 # noinspection PyShadowingNames
