@@ -25,15 +25,12 @@ def user(user_id: int):
 
 
 def user_validate() -> (Dict[str, Any], List[str]):
-    errors = []
     data = flask.request.get_json()
+    errors = []
     if data is None:
         errors.append("No JSON sent. Did you forget to set Content-Type header to application/json?")
         return None, errors
-    # noinspection PyProtectedMember
-    fields = list(User._fields)
-    [fields.remove(n) for n in ['entityid', 'userid']]
-    for field_name in fields:
+    for field_name in User.data_fields:
         val = data.get(field_name)
         if val is None:
             errors.append("Field '%s' is missing" % field_name)
