@@ -21,14 +21,14 @@ def user_validate() -> (Dict[str, Any], List[str]):
     data = flask.request.get_json()
     errors = []
     if data is None:
-        errors.append("No JSON sent. Did you forget to set Content-Type header to application/json?")
+        errors.append("Ожидался JSON. Возможно Вы забыли установить заголовок 'Content-Type' в 'application/json'?")
         return None, errors
     for field_name in User.data_fields:
         val = data.get(field_name)
         if val is None:
-            errors.append("Field '%s' is missing" % field_name)
-        if not isinstance(val, str):
-            errors.append("Field '%s' is not a string" % field_name)
+            errors.append("Отсутствует поле '%s'" % field_name)
+        if field_name == 'name' and not isinstance(val, str):
+            errors.append("Поле '%s' не является строкой" % field_name)
     return data, errors
 
 
