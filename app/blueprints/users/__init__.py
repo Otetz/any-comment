@@ -5,7 +5,7 @@ import flask
 from flask import Blueprint
 
 from app.blueprints.doc import auto
-from app.common import db_conn, resp, affected_num_to_code
+from app.common import db_conn, resp, affected_num_to_code, pagination
 from app.users import get_users, get_user, User, remove_user, new_user, update_user
 
 users = Blueprint('users', __name__)
@@ -38,10 +38,13 @@ def users_list():
     """
     Показать всех пользователей.
 
+    Поддерживается пагинация :func:`app.common.pagination`.
+
     :return: Список всех пользователей
     """
-    records = get_users(db_conn())
-    return resp(200, {'response': records})
+    offset, per_page = pagination()
+    total, records = get_users(db_conn(), offset=offset, limit=per_page)
+    return resp(200, {'response': records, 'total': total, 'pages': int(total / per_page) + 1})
 
 
 @users.route('/users/', methods=['POST'])

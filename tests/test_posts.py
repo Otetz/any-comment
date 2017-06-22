@@ -1,26 +1,15 @@
 import random
 
-import pytest
-
-import any_comment
-from app.common import db_conn
-from app.posts import get_posts, get_post, new_post, remove_post, update_post
 from elizabeth import Generic
 
+from app.posts import get_posts, get_post, new_post, remove_post, update_post
 from app.users import get_users
 
 g = Generic('ru')
 
 
-@pytest.fixture
-def conn():
-    with any_comment.app.app_context():
-        return db_conn()
-
-
-# noinspection PyShadowingNames
 def test_get_posts(conn):
-    posts = get_posts(conn)
+    posts = get_posts(conn)[1]
     assert posts is not None
     assert isinstance(posts, list)
     assert len(posts) > 0
@@ -37,9 +26,8 @@ def test_get_posts(conn):
         assert posts[0][field] != ''
 
 
-# noinspection PyShadowingNames
 def test_get_post(conn):
-    post = get_post(conn, get_posts(conn)[0]['postid'])
+    post = get_post(conn, get_posts(conn)[1][0]['postid'])
     assert post is not None
     assert isinstance(post, dict)
     assert len(post) == 5
@@ -48,15 +36,13 @@ def test_get_post(conn):
     assert post['title'] != ''
 
 
-# noinspection PyShadowingNames
 def test_get_post_error(conn):
     post = get_post(conn, 0)
     assert post is None
 
 
-# noinspection PyShadowingNames
 def test_new_post(conn):
-    userid = random.choice(get_users(conn))['userid']
+    userid = random.choice(get_users(conn)[1])['userid']
     title = g.text.text(quantity=1)
     text = g.text.text(quantity=random.randrange(5, 11))
     post = new_post(conn, {'userid': userid, 'title': title, 'text': text})
@@ -72,9 +58,8 @@ def test_new_post(conn):
     remove_post(conn, post['postid'])
 
 
-# noinspection PyShadowingNames
 def test_remove_post(conn):
-    userid = random.choice(get_users(conn))['userid']
+    userid = random.choice(get_users(conn)[1])['userid']
     title = g.text.text(quantity=1)
     text = g.text.text(quantity=random.randrange(5, 11))
     post1 = new_post(conn, {'userid': userid, 'title': title, 'text': text})
@@ -85,15 +70,13 @@ def test_remove_post(conn):
     assert post3 is None
 
 
-# noinspection PyShadowingNames
 def test_remove_wrong_post(conn):
     cnt = remove_post(conn, 0)
     assert cnt == 0
 
 
-# noinspection PyShadowingNames
 def test_update_post(conn):
-    userid = random.choice(get_users(conn))['userid']
+    userid = random.choice(get_users(conn)[1])['userid']
     title2 = title1 = g.text.text(quantity=1)
     text = g.text.text(quantity=random.randrange(5, 11))
     post1 = new_post(conn, {'userid': userid, 'title': title1, 'text': text})

@@ -1,24 +1,13 @@
 import random
 
-import pytest
-
-import any_comment
-from app.common import db_conn
 from app.users import get_users, get_user, new_user, remove_user, update_user
 from elizabeth import Generic
 
 g = Generic('ru')
 
 
-@pytest.fixture
-def conn():
-    with any_comment.app.app_context():
-        return db_conn()
-
-
-# noinspection PyShadowingNames
 def test_get_users(conn):
-    users = get_users(conn)
+    users = get_users(conn)[1]
     assert users is not None
     assert isinstance(users, list)
     assert len(users) > 0
@@ -36,9 +25,8 @@ def test_get_users(conn):
     assert users[0]['name'] != ''
 
 
-# noinspection PyShadowingNames
 def test_get_user(conn):
-    user = get_user(conn, get_users(conn)[0]['userid'])
+    user = get_user(conn, get_users(conn)[1][0]['userid'])
     assert user is not None
     assert isinstance(user, dict)
     assert len(user) == 3
@@ -53,13 +41,11 @@ def test_get_user(conn):
     assert user['name'] != ''
 
 
-# noinspection PyShadowingNames
 def test_get_user_error(conn):
     user = get_user(conn, 0)
     assert user is None
 
 
-# noinspection PyShadowingNames
 def test_new_user(conn):
     name = g.personal.full_name(gender=random.choice(['male', 'female']))
     data = {'name': name}
@@ -82,7 +68,6 @@ def test_new_user(conn):
     remove_user(conn, user['userid'])
 
 
-# noinspection PyShadowingNames
 def test_remove_user(conn):
     name = g.personal.full_name(gender=random.choice(['male', 'female']))
     data = {'name': name}
@@ -94,13 +79,11 @@ def test_remove_user(conn):
     assert user3 is None
 
 
-# noinspection PyShadowingNames
 def test_remove_wrong_user(conn):
     cnt = remove_user(conn, 0)
     assert cnt == 0
 
 
-# noinspection PyShadowingNames
 def test_update_user(conn):
     name1 = name2 = g.personal.full_name(gender=random.choice(['male', 'female']))
     user1 = new_user(conn, {'name': name1})

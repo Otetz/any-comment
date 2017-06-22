@@ -1,4 +1,4 @@
-from typing import NamedTuple, List, Dict, Any, Optional
+from typing import NamedTuple, List, Dict, Any, Optional, Tuple
 
 
 class Post(NamedTuple('Post', [('entityid', int), ('postid', int), ('userid', int), ('title', str), ('text', str)])):
@@ -22,19 +22,25 @@ class Post(NamedTuple('Post', [('entityid', int), ('postid', int), ('userid', in
         return dict(self._asdict())
 
 
-def get_posts(conn) -> List[Dict[str, Any]]:
+def get_posts(conn, offset: int = 0, limit: int = 100) -> Tuple[int, List[Dict[str, Any]]]:
     """
     Получение всех *Постов* (:class:`app.posts.Post`).
 
     :param conn: Psycopg2 соединение
+    :param int offset: Начало отсчета, по умолчанию 0
+    :param int limit: Количество результатов, по умолчанию максимум = 100
     :return: Список постов
     :rtype: list
     """
     cur = conn.cursor()
-    cur.execute("SELECT entityid, postid, userid, title, text FROM posts;")
+    cur.execute("SELECT COUNT(postid) FROM posts;")
+    total = cur.fetchone()[0]
+
+    cur = conn.cursor()
+    cur.execute("SELECT entityid, postid, userid, title, text FROM posts LIMIT %s OFFSET %s;", [limit, offset])
     posts = [Post(*rec).dict for rec in cur.fetchall()]
     cur.close()
-    return posts
+    return total, posts
 
 
 def get_post(conn, post_id: int) -> Optional[Dict[str, Any]]:

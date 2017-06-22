@@ -5,7 +5,7 @@ import flask
 from flask import Blueprint
 
 from app.blueprints.doc import auto
-from app.common import db_conn, resp, affected_num_to_code
+from app.common import db_conn, resp, affected_num_to_code, pagination
 from app.posts import get_posts, get_post, Post, remove_post, new_post, update_post
 
 posts = Blueprint('posts', __name__)
@@ -40,10 +40,13 @@ def posts_list():
     """
     Показать все посты.
 
+    Поддерживается пагинация :func:`app.common.pagination`.
+
     :return: Список всех постов
     """
-    records = get_posts(db_conn())
-    return resp(200, {'response': records})
+    offset, per_page = pagination()
+    total, records = get_posts(db_conn(), offset=offset, limit=per_page)
+    return resp(200, {'response': records, 'total': total, 'pages': int(total / per_page) + 1})
 
 
 @posts.route('/posts/', methods=['POST'])

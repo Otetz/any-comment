@@ -1,26 +1,15 @@
 import datetime
 import random
 
-import pytest
 from dateutil.tz import tzlocal
-
-import any_comment
-from app.common import db_conn
-from app.comments import get_comments, get_comment, new_comment, remove_comment, update_comment
 from elizabeth import Generic
 
+from app.comments import get_comments, get_comment, new_comment, remove_comment, update_comment
 from app.users import get_users
 
 g = Generic('ru')
 
 
-@pytest.fixture
-def conn():
-    with any_comment.app.app_context():
-        return db_conn()
-
-
-# noinspection PyShadowingNames
 def test_get_comments(conn):
     comments = get_comments(conn)[1]
     assert comments is not None
@@ -47,7 +36,6 @@ def test_get_comments(conn):
         assert comments[0][field] is not None
 
 
-# noinspection PyShadowingNames
 def test_get_comment(conn):
     comment = get_comment(conn, get_comments(conn)[1][0]['commentid'])
     assert comment is not None
@@ -58,15 +46,13 @@ def test_get_comment(conn):
     assert comment['text'] != ''
 
 
-# noinspection PyShadowingNames
 def test_get_comment_error(conn):
     comment = get_comment(conn, 0)
     assert comment is None
 
 
-# noinspection PyShadowingNames
 def test_new_comment(conn):
-    userid = random.choice(get_users(conn))['userid']
+    userid = random.choice(get_users(conn)[1])['userid']
     parentid = random.choice(get_comments(conn)[1])['entityid']
     text = g.text.text(quantity=random.randrange(1, 3))
     dt = datetime.datetime.now(tz=tzlocal())
@@ -85,9 +71,8 @@ def test_new_comment(conn):
     remove_comment(conn, comment['commentid'])
 
 
-# noinspection PyShadowingNames
 def test_remove_comment(conn):
-    userid = random.choice(get_users(conn))['userid']
+    userid = random.choice(get_users(conn)[1])['userid']
     parentid = random.choice(get_comments(conn)[1])['entityid']
     text = g.text.text(quantity=random.randrange(1, 3))
     comment1 = new_comment(conn, {'userid': userid, 'parentid': parentid, 'text': text})
@@ -99,15 +84,13 @@ def test_remove_comment(conn):
     assert comment3['deleted'] is True
 
 
-# noinspection PyShadowingNames
 def test_remove_wrong_comment(conn):
     cnt = remove_comment(conn, 0)
     assert cnt == 0
 
 
-# noinspection PyShadowingNames
 def test_update_comment(conn):
-    userid = random.choice(get_users(conn))['userid']
+    userid = random.choice(get_users(conn)[1])['userid']
     parentid = random.choice(get_comments(conn)[1])['entityid']
     text2 = text1 = g.text.text(quantity=random.randrange(1, 3))
     comment1 = new_comment(conn, {'userid': userid, 'parentid': parentid, 'text': text1})

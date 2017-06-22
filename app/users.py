@@ -1,4 +1,4 @@
-from typing import NamedTuple, List, Dict, Any, Optional
+from typing import NamedTuple, List, Dict, Any, Optional, Tuple
 
 
 class User(NamedTuple('User', [('entityid', int), ('userid', int), ('name', str)])):
@@ -20,19 +20,24 @@ class User(NamedTuple('User', [('entityid', int), ('userid', int), ('name', str)
         return dict(self._asdict())
 
 
-def get_users(conn) -> List[Dict[str, Any]]:
+def get_users(conn, offset: int = 0, limit: int = 100) -> Tuple[int, List[Dict[str, Any]]]:
     """
     Получение всех *Пользователей* (:class:`app.users.User`).
 
     :param conn: Psycopg2 соединение
+    :param int offset: Начало отсчета, по умолчанию 0
+    :param int limit: Количество результатов, по умолчанию максимум = 100
     :return: Список пользователей
     :rtype: list
     """
     cur = conn.cursor()
-    cur.execute("SELECT entityid, userid, name FROM users;")
+    cur.execute("SELECT COUNT(userid) FROM users;")
+    total = cur.fetchone()[0]
+
+    cur.execute("SELECT entityid, userid, name FROM users LIMIT %s OFFSET %s;", [limit, offset])
     users = [User(*rec).dict for rec in cur.fetchall()]
     cur.close()
-    return users
+    return total, users
 
 
 def get_user(conn, user_id: int) -> Optional[Dict[str, Any]]:

@@ -58,7 +58,6 @@ CREATE TABLE comments_history
   ch_userid   INTEGER                                  NOT NULL
 );
 
--- auto-generated definition
 CREATE FUNCTION comments_log()
   RETURNS TRIGGER LANGUAGE plpgsql AS $$
 BEGIN

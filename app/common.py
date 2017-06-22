@@ -2,7 +2,7 @@ from typing import Dict, Any
 
 import flask
 import psycopg2
-from flask import current_app as app, request, current_app
+from flask import current_app as app, request
 import ujson as json
 
 
@@ -47,6 +47,4 @@ def pagination() -> (int, int):
     page = int(args.get('page', defaults['page']))
     per_page = min(int(args.get('per_page', defaults['per_page'])), defaults['max_per_page'])
     offset = int(args.get('offset', per_page * (page - 1)))
-    current_app.logger.debug(args)
-    current_app.logger.debug(str([page, per_page, offset]))
     return offset, per_page
