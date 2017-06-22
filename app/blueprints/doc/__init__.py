@@ -13,7 +13,7 @@ auto = Autodoc()
 @doc.app_template_filter()
 @evalcontextfilter
 def nl2br(eval_ctx, value):
-    """Фильтр для Jinja2 для замены перевода строки на html-тэг <br>."""
+    """Фильтр для `Jinja2` для замены перевода строки на html-тэг <br>."""
     result = u'\n\n'.join(u'<p>%s</p>' % p.replace('\n', '<br>\n') for p in _paragraph_re.split(escape(value)))
     if eval_ctx.autoescape:
         result = Markup(result)

@@ -32,8 +32,8 @@ def get_comments(conn, offset: int = 0, limit: int = 100) -> Tuple[int, List[Dic
     Получение всех *Комментариев* (:class:`app.comments.Comment`).
 
     :param conn: Psycopg2 соединение
-    :param offset:
-    :param limit:
+    :param int offset: Начало отсчета, по умолчанию 0
+    :param int limit: Количество результатов, по умолчанию максимум = 100
     :return: Список комментариев
     :rtype: list
     """
@@ -144,6 +144,8 @@ def update_comment(conn, comment_id: int, data: Dict[str, Any]) -> int:
     """
     Обновление информации о *Комментарии* (:class:`app.comments.Comment`).
 
+    Если какие-то из полей данных не заполнены, то будут использованы текущие значения из БД.
+
     :param conn: Psycopg2 соединение
     :param int comment_id: Идентификатор комментария
     :param dict data: Данные о Комментарии
@@ -157,6 +159,7 @@ def update_comment(conn, comment_id: int, data: Dict[str, Any]) -> int:
     data = {x: data.get(x, comment[x]) for x in Comment.data_fields}
     try:
         cur = conn.cursor()
+        # TODO: Обновлять только реально изменившиеся поля
         cur.execute("UPDATE comments SET userid = %s, datetime = %s, parentid= %s, text = %s, deleted = %s "
                     "WHERE commentid = %s",
                     [data['userid'], data['datetime'], data['parentid'], data['text'], data['deleted'],
