@@ -14,14 +14,14 @@ CREATE TABLE users
 
 CREATE TABLE comments
 (
-  commentid SERIAL                    NOT NULL
+  commentid SERIAL                                   NOT NULL
     CONSTRAINT comments_pkey PRIMARY KEY,
-  userid    INTEGER DEFAULT 0         NOT NULL
+  userid    INTEGER DEFAULT 0                        NOT NULL
     CONSTRAINT comments_users_userid_fk REFERENCES users,
-  datetime  TIMESTAMP DEFAULT now()   NOT NULL,
-  parentid  INTEGER DEFAULT 0         NOT NULL,
-  text      TEXT DEFAULT '' :: TEXT   NOT NULL,
-  deleted   BOOLEAN DEFAULT FALSE     NOT NULL
+  datetime  TIMESTAMP WITH TIME ZONE DEFAULT now()   NOT NULL,
+  parentid  INTEGER DEFAULT 0                        NOT NULL,
+  text      TEXT DEFAULT '' :: TEXT                  NOT NULL,
+  deleted   BOOLEAN DEFAULT FALSE                    NOT NULL
 )
   INHERITS (entities);
 COMMENT ON COLUMN comments.userid IS 'Автор комментария';
@@ -45,17 +45,41 @@ CREATE TABLE posts
 
 CREATE TABLE comments_history
 (
-  id          SERIAL                    NOT NULL
+  id          SERIAL                                   NOT NULL
     CONSTRAINT comments_history_pkey PRIMARY KEY,
-  entityid    INTEGER DEFAULT 0         NOT NULL
-    CONSTRAINT comments_history_entities_original_entityid_fk REFERENCES entities,
-  commentid   INTEGER DEFAULT 0         NOT NULL,
-  userid      INTEGER DEFAULT 0         NOT NULL
+  entityid    INTEGER DEFAULT 0                        NOT NULL,
+  commentid   INTEGER DEFAULT 0                        NOT NULL,
+  userid      INTEGER DEFAULT 0                        NOT NULL
     CONSTRAINT comments_history_users_userid_fk REFERENCES users,
-  datetime    TIMESTAMP                 NOT NULL,
-  parentid    INTEGER DEFAULT 0         NOT NULL
-    CONSTRAINT comments_history_entities_entityid_fk REFERENCES entities,
-  text        TEXT DEFAULT '' :: TEXT   NOT NULL,
-  ch_datetime TIMESTAMP DEFAULT now()   NOT NULL,
-  ch_userid   INTEGER                   NOT NULL
+  datetime    TIMESTAMP WITH TIME ZONE                 NOT NULL,
+  parentid    INTEGER DEFAULT 0                        NOT NULL,
+  text        TEXT DEFAULT '' :: TEXT                  NOT NULL,
+  ch_datetime TIMESTAMP WITH TIME ZONE DEFAULT now()   NOT NULL,
+  ch_userid   INTEGER                                  NOT NULL
 );
+
+-- auto-generated definition
+CREATE FUNCTION comments_log()
+  RETURNS TRIGGER LANGUAGE plpgsql AS $$
+BEGIN
+  --
+  -- Создаем строку в comments_history, которая отражает предыдущую версию.
+  --
+  -- noinspection SqlInsertValues
+  INSERT INTO comments_history (entityid, commentid, userid, datetime, parentid, "text", ch_userid)
+    SELECT
+      OLD.entityid,
+      OLD.commentid,
+      OLD.userid,
+      OLD.datetime,
+      OLD.parentid,
+      OLD.text,
+      NEW.userid;
+  RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER comments_log
+BEFORE UPDATE ON comments
+FOR EACH ROW EXECUTE PROCEDURE comments_log();
+
