@@ -1,6 +1,6 @@
 import re
 
-from flask import Blueprint
+from flask import Blueprint, abort
 from flask.ext.autodoc import Autodoc
 from jinja2 import evalcontextfilter, Markup, escape
 
@@ -26,13 +26,13 @@ def documentation():
     return auto.html(title='Сервис комментариев any-comment', template='index.html')
 
 
-@doc.route('/users/')
-def doc_users():
-    """Методы для работы с Пользователями: /doc/users/."""
-    return auto.html(title="Пользователи", groups=['users'], template='group.html')
-
-
-@doc.route('/posts/')
-def doc_posts():
-    """Методы для работы с Постами: /doc/posts/."""
-    return auto.html(title="Посты", groups=['posts'], template='group.html')
+@doc.route('/<string:group>/')
+def doc_group(group: str):
+    """Универсальный метод для работы с группами методов: /doc/…/."""
+    titles = {
+        'users': 'Пользователи',
+        'posts': 'Посты'
+    }
+    if group not in titles:
+        return abort(404)
+    return auto.html(title=titles[group], groups=[group], template='group.html')
