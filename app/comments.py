@@ -79,11 +79,17 @@ def new_comment(conn, data) -> Dict[str, Any]:
     """
     Сохранение нового *Комментария* (:class:`app.comments.Comment`).
 
+    Следующие поля данных могут быть опущены при создании:
+        - datetime (datetime.datetime) — Дата создания комментария, по умолчанию — текущий момент времени
+        - deleted (bool) — Флаг удалённого комментария, по умолчанию — False
+
     :param conn: Psycopg2 соединение
     :param dict data: Данные о комментарии
     :return: Комментарий (словарь всех полей)
     :rtype: dict
     """
+    data['deleted'] = data.get('deleted', False)
+    data['datetime'] = data.get('datetime', datetime.datetime.now())
     try:
         cur = conn.cursor()
         cur.execute("INSERT INTO comments (userid, datetime, parentid, text, deleted) "
@@ -113,6 +119,8 @@ def remove_comment(conn, comment_id: int) -> Optional[int]:
     """
     # Проверяем что удаляем лист, а не ветвь
     comment = get_comment(conn, comment_id)
+    if comment is None:
+        return 0
     if comment['deleted']:
         return 1  # TODO: Можно обсудить что здесь возвращать (при попытке повторного удаления).
     cur = conn.cursor()
@@ -142,6 +150,11 @@ def update_comment(conn, comment_id: int, data: Dict[str, Any]) -> int:
     :return: Количество обновлённых записей
     :rtype: int
     """
+    comment = get_comment(conn, comment_id)
+    if comment is None:
+        return 0
+    # Формируем полный словарь данных, для отсутствующих значений используем данные из базы
+    data = {x: data.get(x, comment[x]) for x in Comment.data_fields}
     try:
         cur = conn.cursor()
         cur.execute("UPDATE comments SET userid = %s, datetime = %s, parentid= %s, text = %s, deleted = %s "
