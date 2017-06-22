@@ -31,7 +31,8 @@ def doc_group(group: str):
     """Универсальный метод для работы с группами методов: /doc/…/."""
     titles = {
         'users': 'Пользователи',
-        'posts': 'Посты'
+        'posts': 'Посты',
+        'comments': 'Комментарии'
     }
     if group not in titles:
         return abort(404)

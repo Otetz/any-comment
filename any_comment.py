@@ -4,6 +4,7 @@ import os
 import flask
 from flask import Flask
 
+from app.blueprints.comments import comments
 from app.blueprints.doc import doc
 from app.blueprints.posts import posts
 from app.blueprints.users import users
@@ -14,6 +15,7 @@ app.config.from_object(os.environ['APP_SETTINGS'])
 
 app.register_blueprint(users, url_prefix=app.config['PREFIX'])
 app.register_blueprint(posts, url_prefix=app.config['PREFIX'])
+app.register_blueprint(comments, url_prefix=app.config['PREFIX'])
 app.register_blueprint(doc)
 
 
