@@ -4,10 +4,7 @@ import os
 import flask
 from flask import Flask
 
-from app.blueprints.comments import comments
-from app.blueprints.doc import doc
-from app.blueprints.posts import posts
-from app.blueprints.users import users
+from app.blueprints import comments, doc, posts, users
 
 logger = logging.getLogger(__name__)
 app = Flask(__name__)
