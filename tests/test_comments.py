@@ -2,6 +2,7 @@ import datetime
 import random
 
 import pytest
+from dateutil.tz import tzlocal
 
 import any_comment
 from app.common import db_conn
@@ -68,7 +69,7 @@ def test_new_comment(conn):
     userid = random.choice(get_users(conn))['userid']
     parentid = random.choice(get_comments(conn)[1])['entityid']
     text = g.text.text(quantity=random.randrange(1, 3))
-    dt = datetime.datetime.now()
+    dt = datetime.datetime.now(tz=tzlocal())
     comment = new_comment(conn, {'userid': userid, 'parentid': parentid, 'text': text})
     assert comment is not None
     assert isinstance(comment, dict)
@@ -125,7 +126,7 @@ def test_update_comment(conn):
     assert comment3['entityid'] == comment1['entityid']
     assert comment3['userid'] == comment1['userid']
     assert comment3['parentid'] == comment1['parentid']
-    assert comment3['datetime'] == comment1['datetime']
+    assert (comment3['datetime'] - comment1['datetime']).seconds < 1
     assert comment3['deleted'] == comment1['deleted']
     assert comment3['text'] != comment1['text']
     assert comment3['text'] == text2

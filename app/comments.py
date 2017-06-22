@@ -1,6 +1,8 @@
 import datetime
 from typing import NamedTuple, List, Dict, Any, Optional, Tuple
 
+from dateutil.tz import tzlocal
+
 
 class Comment(NamedTuple('Comment',
                          [('entityid', int), ('commentid', int), ('userid', int), ('datetime', datetime.datetime),
@@ -38,6 +40,7 @@ def get_comments(conn, offset: int = 0, limit: int = 100) -> Tuple[int, List[Dic
     :rtype: list
     """
     cur = conn.cursor()
+    cur.execute("SET timezone = 'Europe/Moscow';")
     # В лоб считать неудалённые записи нельзя - будет FullScan, потому немного хитрим:
     # Берем количество записей из таблицы статистики и вычитаем число удалённых записей.
     # Обе операции делаются по индексам и потому максимально быстрые.
@@ -65,6 +68,7 @@ def get_comment(conn, comment_id: int) -> Optional[Dict[str, Any]]:
     :rtype: dict
     """
     cur = conn.cursor()
+    cur.execute("SET timezone = 'Europe/Moscow';")
     cur.execute(
         "SELECT entityid, commentid, userid, datetime, parentid, text, deleted FROM comments WHERE commentid = %s;",
         [comment_id])
@@ -89,9 +93,10 @@ def new_comment(conn, data) -> Dict[str, Any]:
     :rtype: dict
     """
     data['deleted'] = data.get('deleted', False)
-    data['datetime'] = data.get('datetime', datetime.datetime.now())
+    data['datetime'] = data.get('datetime', datetime.datetime.now(tz=tzlocal()))
     try:
         cur = conn.cursor()
+        cur.execute("SET timezone = 'Europe/Moscow';")
         cur.execute("INSERT INTO comments (userid, datetime, parentid, text, deleted) "
                     "VALUES (%s, %s, %s, %s, %s) "
                     "RETURNING commentid, entityid",
@@ -159,6 +164,7 @@ def update_comment(conn, comment_id: int, data: Dict[str, Any]) -> int:
     data = {x: data.get(x, comment[x]) for x in Comment.data_fields}
     try:
         cur = conn.cursor()
+        cur.execute("SET timezone = 'Europe/Moscow';")
         # TODO: Обновлять только реально изменившиеся поля
         cur.execute("UPDATE comments SET userid = %s, datetime = %s, parentid= %s, text = %s, deleted = %s "
                     "WHERE commentid = %s",

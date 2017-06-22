@@ -5,3 +5,4 @@ flask==0.12.2
 psycopg2==2.7.1
 flake8==3.3.0
 flask-autodoc==0.1.2
+python-dateutil==2.6.0
