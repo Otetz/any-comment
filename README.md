@@ -1,5 +1,7 @@
 # Any Comment
 
+[![Code Climate](https://img.shields.io/codeclimate/github/Otetz/any-comment.svg)](https://codeclimate.com/github/Otetz/any-comment)
+
 Сервис комментариев.
 
 Документация по API подробно представлена в разделе [docs](./docs/INDEX.md)
