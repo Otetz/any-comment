@@ -76,7 +76,7 @@ def post(post_id: int):
     """
     record = get_post(db_conn(), post_id)
     if record is None:
-        errors = [{'error': 'Пользователь не найден', 'post_id': post_id}]
+        errors = [{'error': 'Пост не найден', 'post_id': post_id}]
         return resp(404, {'errors': errors})
     return resp(200, {'response': record})
 
