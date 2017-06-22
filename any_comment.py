@@ -19,7 +19,7 @@ app.register_blueprint(doc)
 
 @app.route('/')
 def hello_world():
-    return flask.redirect(app.config['PREFIX'] + '/users')
+    return flask.redirect('/doc')
 
 
 if __name__ == '__main__':
