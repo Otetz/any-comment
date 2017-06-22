@@ -2,7 +2,7 @@
 from typing import Dict, Any, List
 
 import flask
-from flask import Blueprint, current_app
+from flask import Blueprint
 
 from app.blueprints.doc import auto
 from app.comments import get_comments, get_comment, Comment, remove_comment, new_comment, update_comment
@@ -40,7 +40,7 @@ def comments_list():
     """
     Показать все комментарии.
 
-    Поддерживается пагинация :method:`app.common.pagination()`.
+    Поддерживается пагинация :func:`app.common.pagination`.
 
     :return: Список всех комментариев
     """
