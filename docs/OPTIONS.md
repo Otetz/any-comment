@@ -16,3 +16,13 @@
 - **offset** `?offset={int}` — Начало отсчета для страницы, вычисляемое, если определено в запросе то праметр `page` 
   (номер страницы) игнорируется
  
+**Примеры запросов**:
+```bash
+curl -X GET http://HOSTNAME/api/1.0/comments/?page=2
+```
+```bash
+curl -X GET http://HOSTNAME/api/1.0/comments/?page=4\&per_page=5
+```
+```bash
+curl -X GET http://HOSTNAME/api/1.0/comments/?offset=10
+```

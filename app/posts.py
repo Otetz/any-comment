@@ -1,29 +1,9 @@
-from typing import NamedTuple, List, Dict, Any, Optional, Tuple
+from typing import List, Dict, Any, Optional, Tuple
 
 import psycopg2
 
-from app.common import DatabaseException
-
-
-class Post(NamedTuple('Post', [('entityid', int), ('postid', int), ('userid', int), ('title', str), ('text', str)])):
-    """
-    Пост.
-
-    Аттрибуты:
-        - entityid (int) — Идентификатор сущности поста (сквозной по всем объектам)
-        - postid (int) — Идентификатор поста
-        - userid (int) — Идентификатор пользователя-автора
-        - title (str) — Заголовок поста
-        - text (str) — Текст поста
-    """
-
-    data_fields = ['userid', 'title', 'text']
-    """Поля **данных** поста (например, необходимые для добавления нового)."""
-
-    @property
-    def dict(self):
-        """Возвращает поля в виде обычного словаря."""
-        return dict(self._asdict())
+from app.common import DatabaseException, entity_first_level_comments
+from app.types import Post
 
 
 def get_posts(conn, offset: int = 0, limit: int = 100) -> Tuple[int, List[Dict[str, Any]]]:
@@ -133,3 +113,22 @@ def update_post(conn, post_id: int, data: Dict[str, Any]) -> int:
     except psycopg2.DatabaseError as e:
         raise DatabaseException(e)
     return cnt
+
+
+def first_level_comments(conn, post_id: int, offset: int = 0, limit: int = 100) -> Tuple[int, List[Dict[str, Any]]]:
+    """
+    Показать комментарии первого уровня вложенности к указанному посту.
+
+    Поддерживается пагинация :func:`app.common.pagination`.
+
+    :param conn: Psycopg2 соединение
+    :param int post_id: Идентификатор поста
+    :param int offset: Начало отсчета, по умолчанию 0
+    :param int limit: Количество результатов, по умолчанию максимум = 100
+    :return: Общее количество и Список комментариев первого уровня вложенности
+    :rtype: tuple
+    """
+    post = get_post(conn, post_id)
+    if post is None:
+        return 0, []
+    return entity_first_level_comments(conn, post['entityid'], offset, limit)

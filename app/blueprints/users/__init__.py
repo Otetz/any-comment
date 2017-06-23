@@ -1,24 +1,25 @@
 """Пользователи."""
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 
 import flask
 from flask import Blueprint
 
 from app.blueprints.doc import auto
 from app.common import db_conn, resp, affected_num_to_code, pagination, DatabaseException
-from app.users import get_users, get_user, User, remove_user, new_user, update_user
+from app.users import get_users, get_user, User, remove_user, new_user, update_user, first_level_comments
 
 users = Blueprint('users', __name__)
 
 
-def user_validate() -> (Dict[str, Any], List[str]):
+def user_validate(data: Optional[Dict[str, Any]] = None) -> (Dict[str, Any], List[str]):
     """
     Валидация данных о Пользователе.
 
     :return: Данные пользователя, Найденные ошибки
     :rtype: tuple
     """
-    data = flask.request.get_json()
+    if not data:
+        data = flask.request.get_json()
     errors = []
     if data is None:
         errors.append("Ожидался JSON. Возможно Вы забыли установить заголовок 'Content-Type' в 'application/json'?")
@@ -113,3 +114,26 @@ def delete_user(user_id: int):
     """
     num_deleted = remove_user(db_conn(), user_id)
     return resp(affected_num_to_code(num_deleted), {})
+
+
+@users.route('/users/<int:user_id>/first_level', methods=['GET'])
+@auto.doc(groups=['users'])
+def get_first_level_comments(user_id: int):
+    """
+    Показать комментарии первого уровня вложенности к указанному пользователю.
+
+    Поддерживается пагинация :func:`app.common.pagination`.
+
+    :param int user_id: Идентификатор пользователя
+    :return: Список комментарии первого уровня вложенности
+    """
+    record = get_user(db_conn(), user_id)
+    if record is None:
+        errors = [{'error': 'Пост не найден', 'post_id': user_id}]
+        return resp(404, {'errors': errors})
+
+    offset, per_page = pagination()
+    total, records = first_level_comments(db_conn(), user_id, offset=offset, limit=per_page)
+    for rec in records:
+        rec['datetime'] = rec['datetime'].isoformat()
+    return resp(200, {'response': records, 'total': total, 'pages': int(total / per_page) + 1})

@@ -1,12 +1,13 @@
 import random
 
 import dateutil.parser
-from dateutil.tz import tzlocal, datetime
 from elizabeth import Generic
+from flaky import flaky
 from flask import url_for
 
 from app.comments import Comment, get_comments, get_comment, new_comment
 from app.common import db_conn, to_json
+from app.posts import get_posts, first_level_comments as post_first_level_comments
 from app.users import get_users
 
 g = Generic('ru')
@@ -63,10 +64,8 @@ def test_post(app, client):
         userid = random.choice(get_users(db_conn())[1])['userid']
         parentid = random.choice(get_comments(db_conn())[1])['entityid']
         text = g.text.text(quantity=random.randrange(1, 3))
-        dt = datetime.datetime.now(tz=tzlocal()).isoformat()
-        res = client.post(url_for('comments.post_comment'),
-                          data=to_json({'userid': userid, 'parentid': parentid, 'text': text}),
-                          content_type='application/json')
+        res = client.post(url_for('comments.post_comment'), content_type='application/json',
+                          data=to_json({'userid': userid, 'parentid': parentid, 'text': text}))
         assert res.status_code == 200
         assert res is not None
         assert res.json is not None
@@ -86,8 +85,26 @@ def test_delete(app, client):
         parentid = random.choice(get_comments(db_conn())[1])['entityid']
         text = g.text.text(quantity=random.randrange(1, 3))
         comment1 = new_comment(db_conn(), {'userid': userid, 'parentid': parentid, 'text': text})
-        res = client.delete(url_for('comments.put_comment', comment_id=comment1['commentid']))
+        res = client.delete(url_for('comments.delete_comment', comment_id=comment1['commentid']))
         assert res.status_code == 200
         comment3 = get_comment(db_conn(), comment1['commentid'])
         assert comment3 is not None
         assert comment3['deleted'] is True
+
+
+@flaky
+def test_first_level_comments(app, client):
+    with app.app_context():
+        posts = get_posts(db_conn())[1]
+        comments = []
+        while not comments:
+            post = random.choice(posts)
+            comments = post_first_level_comments(db_conn(), post['postid'])[1]
+        res = client.get(url_for('comments.get_first_level_comments', comment_id=random.choice(comments)['commentid']))
+        assert res is not None
+        assert res.status_code == 200
+        assert res.json is not None
+        assert 'total' in res.json
+        assert 'response' in res.json
+        assert res.json['response'] is not None
+        assert isinstance(res.json['response'], list)

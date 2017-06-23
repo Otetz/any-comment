@@ -1,27 +1,9 @@
-from typing import NamedTuple, List, Dict, Any, Optional, Tuple
+from typing import List, Dict, Any, Optional, Tuple
 
 import psycopg2
 
-from app.common import DatabaseException
-
-
-class User(NamedTuple('User', [('entityid', int), ('userid', int), ('name', str)])):
-    """
-    Пользователь.
-
-    Аттрибуты:
-        - entityid (int) — Идентификатор сущности пользователя (сквозной по всем объектам)
-        - userid (int) — Идентификатор пользователя
-        - name (str) — Имя пользователя
-    """
-
-    data_fields = ['name']
-    """Поля **данных** пользователя (например, необходимые для добавления нового)."""
-
-    @property
-    def dict(self):
-        """Возвращает поля в виде обычного словаря."""
-        return dict(self._asdict())
+from app.common import DatabaseException, entity_first_level_comments
+from app.types import User
 
 
 def get_users(conn, offset: int = 0, limit: int = 100) -> Tuple[int, List[Dict[str, Any]]]:
@@ -123,3 +105,22 @@ def update_user(conn, user_id: int, data: Dict[str, Any]) -> int:
     except psycopg2.DatabaseError as e:
         raise DatabaseException(e)
     return cnt
+
+
+def first_level_comments(conn, user_id: int, offset: int = 0, limit: int = 100) -> Tuple[int, List[Dict[str, Any]]]:
+    """
+    Показать комментарии первого уровня вложенности к указанному пользователю.
+
+    Поддерживается пагинация :func:`app.common.pagination`.
+
+    :param conn: Psycopg2 соединение
+    :param int user_id: Идентификатор пользователя
+    :param int offset: Начало отсчета, по умолчанию 0
+    :param int limit: Количество результатов, по умолчанию максимум = 100
+    :return: Общее количество и Список комментариев первого уровня вложенности
+    :rtype: tuple
+    """
+    user = get_user(conn, user_id)
+    if user is None:
+        return 0, []
+    return entity_first_level_comments(conn, user['entityid'], offset, limit)

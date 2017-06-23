@@ -7,3 +7,4 @@ flake8==3.3.0
 flask-autodoc==0.1.2
 python-dateutil==2.6.0
 pytest-flask==0.10.0
+flaky==3.4.0

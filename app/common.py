@@ -1,9 +1,11 @@
 import ujson as json
-from typing import Dict, Any
+from typing import Dict, Any, Tuple, List
 
 import flask
 import psycopg2
 from flask import current_app as app, request
+
+from app.types import Comment
 
 
 # region Exceptions
@@ -12,6 +14,10 @@ class AnyCommentException(Exception):
 
 
 class DatabaseException(AnyCommentException):
+    pass
+
+
+class InvalidArgumentsException(AnyCommentException):
     pass
 
 
@@ -59,3 +65,31 @@ def pagination() -> (int, int):
     per_page = min(int(args.get('per_page', defaults['per_page'])), defaults['max_per_page'])
     offset = int(args.get('offset', per_page * (page - 1)))
     return offset, per_page
+
+
+def entity_first_level_comments(conn, entityid: int, offset: int = 0, limit: int = 100) -> \
+        Tuple[int, List[Dict[str, Any]]]:
+    """
+    Показать комментарии первого уровня вложенности к указанной сущности.
+
+    Поддерживается пагинация :func:`app.common.pagination`.
+
+    :param conn: Psycopg2 соединение
+    :param int entityid: Идентификатор родительской сущности
+    :param int offset: Начало отсчета, по умолчанию 0
+    :param int limit: Количество результатов, по умолчанию максимум = 100
+    :return: Общее количество и Список комментариев первого уровня вложенности
+    :rtype: tuple
+    """
+    cur = conn.cursor()
+    cur.execute("SET timezone = 'Europe/Moscow';")
+    cur.execute("SELECT COUNT(entityid) FROM comments WHERE parentid = %s AND deleted = %s;", [entityid, False])
+    total = cur.fetchone()[0]
+
+    cur.execute("SELECT entityid, commentid, userid, datetime, parentid, text, deleted "
+                "FROM comments "
+                "WHERE parentid = %s AND deleted = %s "
+                "LIMIT %s OFFSET %s;", [entityid, False, limit, offset])
+    comments = [Comment(*rec).dict for rec in cur.fetchall()]
+    cur.close()
+    return total, comments

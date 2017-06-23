@@ -1,35 +1,11 @@
 import datetime
-from typing import NamedTuple, List, Dict, Any, Optional, Tuple
+from typing import List, Dict, Any, Optional, Tuple
 
 import psycopg2
 from dateutil.tz import tzlocal
 
-from app.common import DatabaseException
-
-
-class Comment(NamedTuple('Comment',
-                         [('entityid', int), ('commentid', int), ('userid', int), ('datetime', datetime.datetime),
-                          ('parentid', int), ('text', str), ('deleted', bool)])):
-    """
-    Комментарий.
-
-    Аттрибуты:
-        - entityid (int) — Идентификатор сущности комментария (сквозной по всем объектам)
-        - commentid (int) — Идентификатор комментария
-        - userid (int) — Идентификатор пользователя-автора
-        - datetime (datetime.datetime) – Дата создания комментария
-        - parentid (int) – Идентификатор родительской сущности
-        - text (str) — Текст комментария
-        - deleted (bool) – Флаг удалённого комментария
-    """
-
-    data_fields = ['userid', 'datetime', 'parentid', 'text', 'deleted']
-    """Поля **данных** комментария (например, необходимые для добавления нового)."""
-
-    @property
-    def dict(self):
-        """Возвращает поля в виде обычного словаря."""
-        return dict(self._asdict())
+from app.common import DatabaseException, entity_first_level_comments
+from app.types import Comment
 
 
 def get_comments(conn, offset: int = 0, limit: int = 100) -> Tuple[int, List[Dict[str, Any]]]:
@@ -39,8 +15,8 @@ def get_comments(conn, offset: int = 0, limit: int = 100) -> Tuple[int, List[Dic
     :param conn: Psycopg2 соединение
     :param int offset: Начало отсчета, по умолчанию 0
     :param int limit: Количество результатов, по умолчанию максимум = 100
-    :return: Список комментариев
-    :rtype: list
+    :return: Общее количество и Список комментариев
+    :rtype: tuple
     """
     cur = conn.cursor()
     cur.execute("SET timezone = 'Europe/Moscow';")
@@ -49,7 +25,7 @@ def get_comments(conn, offset: int = 0, limit: int = 100) -> Tuple[int, List[Dic
     # Обе операции делаются по индексам и потому максимально быстрые.
     cur.execute("SELECT (SELECT n_live_tup FROM pg_stat_all_tables WHERE relname = 'comments') "
                 "- "
-                "(SELECT COUNT(deleted) FROM comments WHERE deleted = TRUE);", [False])
+                "(SELECT COUNT(deleted) FROM comments WHERE deleted = %s);", [True])
     total = cur.fetchone()[0]
 
     cur.execute("SELECT entityid, commentid, userid, datetime, parentid, text, deleted "
@@ -127,10 +103,8 @@ def remove_comment(conn, comment_id: int) -> Optional[int]:
     """
     # Проверяем что удаляем лист, а не ветвь
     comment = get_comment(conn, comment_id)
-    if comment is None:
+    if comment is None or comment['deleted']:
         return 0
-    if comment['deleted']:
-        return 1  # TODO: Можно обсудить что здесь возвращать (при попытке повторного удаления).
     cur = conn.cursor()
     cur.execute("SELECT COUNT(entityid) FROM comments WHERE parentid = %s AND deleted = %s;",
                 [comment['entityid'], False])
@@ -165,6 +139,8 @@ def update_comment(conn, comment_id: int, data: Dict[str, Any]) -> int:
         return 0
     # Формируем полный словарь данных, для отсутствующих значений используем данные из базы
     data = {x: data.get(x, comment[x]) for x in Comment.data_fields}
+    if data == comment:
+        return 0
     try:
         cur = conn.cursor()
         cur.execute("SET timezone = 'Europe/Moscow';")
@@ -179,3 +155,22 @@ def update_comment(conn, comment_id: int, data: Dict[str, Any]) -> int:
     except psycopg2.DatabaseError as e:
         raise DatabaseException(e)
     return cnt
+
+
+def first_level_comments(conn, comment_id: int, offset: int = 0, limit: int = 100) -> Tuple[int, List[Dict[str, Any]]]:
+    """
+    Показать комментарии первого уровня вложенности к указанному комментарию.
+
+    Поддерживается пагинация :func:`app.common.pagination`.
+
+    :param conn: Psycopg2 соединение
+    :param int comment_id: Идентификатор родительского комментария
+    :param int offset: Начало отсчета, по умолчанию 0
+    :param int limit: Количество результатов, по умолчанию максимум = 100
+    :return: Общее количество и Список комментариев первого уровня вложенности
+    :rtype: tuple
+    """
+    post = get_comment(conn, comment_id)
+    if post is None:
+        return 0, []
+    return entity_first_level_comments(conn, post['entityid'], offset, limit)

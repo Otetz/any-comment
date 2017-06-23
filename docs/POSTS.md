@@ -8,6 +8,7 @@
 * [GET /posts/{post_id} – Получить информацио о Посте](#get-postspost_id--Получить-информацио-о-Посте)
 * [PUT /posts/{post_id} — Изменить информацио о Посте](#put-postspost_id--Изменить-информацио-о-Посте)
 * [DELETE /posts/{post_id} — Удалить Пост](#delete-postspost_id--Удалить-Пост)
+* [GET /posts/{post_id}/first_level — Комментарии первого уровня](#get-postspost_idfirst_level--Комментарии-первого-уровня)
 
 ## GET /posts/ — Показать все Посты
 **Аргументы**: Нет  
@@ -121,4 +122,44 @@ curl -X PUT http://HOSTNAME/api/1.0/posts/477 \
 **Пример запроса**:
 ```bash
 curl -X DELETE http://HOSTNAME/api/1.0/posts/477
+```
+
+## GET /posts/{post_id}/first_level — Комментарии первого уровня
+**Аргументы**: 
+- *post_id* (int) Идентификатор поста
+
+**Возвращает**: Список Комментариев первого уровня вложенности
+
+Поддерживается [пагинация](./OPTIONS.md#Пагинация).
+
+**Пример запроса**:
+```bash
+curl -X GET http://HOSTNAME/api/1.0/posts/428951/first_level
+```
+**Пример ответа**:
+```json
+{
+  "pages": 1,
+  "total": 2,
+  "response": [
+    {
+      "entityid": 532842,
+      "parentid": 429699,
+      "commentid": 531905,
+      "userid": 334,
+      "deleted": false,
+      "text": "Python — высокоуровневый язык программирования общего назначения, ориентированный …",
+      "datetime": "2017-06-23T01:02:30.439275+03:00"
+    },
+    {
+      "entityid": 532695,
+      "parentid": 429699,
+      "commentid": 531858,
+      "userid": 333,
+      "deleted": false,
+      "text": "В наш век информации слишком много, чтобы понять кто прав, а кто лукавит.",
+      "datetime": "2017-06-22T22:30:06.871942+03:00"
+    }
+  ]
+}
 ```

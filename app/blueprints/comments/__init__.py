@@ -2,13 +2,15 @@
 import datetime
 from typing import Dict, Any, List, Optional
 
+import dateutil.parser
 import flask
 from dateutil.tz import tzlocal
 from flask import Blueprint
 
 from app.blueprints.doc import auto
-from app.comments import get_comments, get_comment, Comment, remove_comment, new_comment, update_comment
+from app.comments import get_comments, get_comment, remove_comment, new_comment, update_comment, first_level_comments
 from app.common import db_conn, resp, affected_num_to_code, pagination, DatabaseException
+from app.types import Comment
 
 comments = Blueprint('comments', __name__)
 
@@ -68,6 +70,8 @@ def post_comment():
         data['deleted'] = False
     if 'datetime' not in data:
         data['datetime'] = datetime.datetime.now(tz=tzlocal())
+    else:
+        data['datetime'] = dateutil.parser.parse(data['datetime'])
     (data, errors) = comment_validate(data)
     if errors:
         return resp(400, {"errors": errors})
@@ -86,7 +90,7 @@ def comment(comment_id: int):
     """
     Получить информацио о Комментарии.
 
-    :param comment_id: Идентификатор комментария
+    :param int comment_id: Идентификатор комментария
     :return: Запись с информацией о запрошенном Комментарии либо Сообщение об ощибке
     """
     record = get_comment(db_conn(), comment_id)
@@ -103,7 +107,7 @@ def put_comment(comment_id: int):
     """
     Изменить информацио Комментария.
 
-    :param comment_id: Идентификатор комментария
+    :param int comment_id: Идентификатор комментария
     :return: Пустой словарь {} при успехе, иначе Возникшие ошибки
     """
     record = get_comment(db_conn(), comment_id)
@@ -133,7 +137,7 @@ def delete_comment(comment_id: int):
 
     Комментарию устанавливается флаг удалённого.
 
-    :param comment_id: Идентификатор комментария
+    :param int comment_id: Идентификатор комментария
     :return: Пустой словарь {} при успехе, иначе Возникшие ошибки. При попытке удаеления ветви возвращает статус 400.
     """
     try:
@@ -141,3 +145,26 @@ def delete_comment(comment_id: int):
     except DatabaseException as e:
         return resp(400, {"errors": str(e)})
     return resp(affected_num_to_code(num_deleted, 400), {})
+
+
+@comments.route('/comments/<int:comment_id>/first_level', methods=['GET'])
+@auto.doc(groups=['comments'])
+def get_first_level_comments(comment_id: int):
+    """
+    Показать комментарии первого уровня вложенности к указанному комментарию.
+
+    Поддерживается пагинация :func:`app.common.pagination`.
+
+    :param int comment_id: Идентификатор родительского комментария
+    :return: Список комментарии первого уровня вложенности
+    """
+    record = get_comment(db_conn(), comment_id)
+    if record is None:
+        errors = [{'error': 'Родительский комментарий не найден', 'comment_id': comment_id}]
+        return resp(404, {'errors': errors})
+
+    offset, per_page = pagination()
+    total, records = first_level_comments(db_conn(), comment_id, offset=offset, limit=per_page)
+    for rec in records:
+        rec['datetime'] = rec['datetime'].isoformat()
+    return resp(200, {'response': records, 'total': total, 'pages': int(total / per_page) + 1})
