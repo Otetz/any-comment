@@ -25,8 +25,8 @@ def resp(code, data: Dict[str, Any]):
     return flask.Response(status=code, mimetype="application/json; encoding=utf-8", response=to_json(data))
 
 
-def affected_num_to_code(cnt: int) -> int:
-    return (cnt is None or cnt == 0) and 404 or 200
+def affected_num_to_code(cnt: int, code: int = 404) -> int:
+    return (cnt is None or cnt == 0) and code or 200
 
 
 def pagination() -> (int, int):

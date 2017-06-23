@@ -37,7 +37,7 @@ def test_get_comments(conn):
 
 
 def test_get_comment(conn):
-    comment = get_comment(conn, get_comments(conn)[1][0]['commentid'])
+    comment = random.choice(get_comments(conn)[1])
     assert comment is not None
     assert isinstance(comment, dict)
     assert len(comment) == 7

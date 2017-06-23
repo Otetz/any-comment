@@ -114,6 +114,11 @@ def update_post(conn, post_id: int, data: Dict[str, Any]) -> int:
     :return: Количество обновлённых записей
     :rtype: int
     """
+    post = get_post(conn, post_id)
+    if post is None:
+        return 0
+    # Формируем полный словарь данных, для отсутствующих значений используем данные из базы
+    data = {x: data.get(x, post[x]) for x in Post.data_fields}
     try:
         cur = conn.cursor()
         cur.execute("UPDATE posts SET userid = %s, title = %s, text = %s WHERE postid = %s",

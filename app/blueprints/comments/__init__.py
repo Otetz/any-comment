@@ -1,7 +1,9 @@
 """Комментарии."""
-from typing import Dict, Any, List
+import datetime
+from typing import Dict, Any, List, Optional
 
 import flask
+from dateutil.tz import tzlocal
 from flask import Blueprint
 
 from app.blueprints.doc import auto
@@ -11,14 +13,16 @@ from app.common import db_conn, resp, affected_num_to_code, pagination
 comments = Blueprint('comments', __name__)
 
 
-def comment_validate() -> (Dict[str, Any], List[str]):
+def comment_validate(data: Optional[Dict[str, Any]] = None) -> (Dict[str, Any], List[str]):
     """
     Валидация данных о Комментарии.
 
+    :param dict data: (Опционально) Готовый словарь данных для проверки на валидность
     :return: Данные комментария, Найденные ошибки
     :rtype: tuple
     """
-    data = flask.request.get_json()
+    if not data:
+        data = flask.request.get_json()
     errors = []
     if data is None:
         errors.append("Ожидался JSON. Возможно Вы забыли установить заголовок 'Content-Type' в 'application/json'?")
@@ -46,6 +50,8 @@ def comments_list():
     """
     offset, per_page = pagination()
     total, records = get_comments(db_conn(), offset=offset, limit=per_page)
+    for rec in records:
+        rec['datetime'] = rec['datetime'].isoformat()
     return resp(200, {'response': records, 'total': total, 'pages': int(total / per_page) + 1})
 
 
@@ -57,7 +63,12 @@ def post_comment():
 
     :return: Запись о новом Комментарии, либо Возникшие ошибки
     """
-    (data, errors) = comment_validate()
+    data = flask.request.get_json()
+    if 'deleted' not in data:
+        data['deleted'] = False
+    if 'datetime' not in data:
+        data['datetime'] = datetime.datetime.now(tz=tzlocal())
+    (data, errors) = comment_validate(data)
     if errors:
         return resp(400, {"errors": errors})
 
@@ -65,6 +76,7 @@ def post_comment():
         record = new_comment(db_conn(), data)
     except Exception as e:
         return resp(400, {"errors": str(e)})
+    record['datetime'] = record['datetime'].isoformat()
     return resp(200, record)
 
 
@@ -81,6 +93,7 @@ def comment(comment_id: int):
     if record is None:
         errors = [{'error': 'Комментарий не найден', 'comment_id': comment_id}]
         return resp(404, {'errors': errors})
+    record['datetime'] = record['datetime'].isoformat()
     return resp(200, {'response': record})
 
 
@@ -93,7 +106,15 @@ def put_comment(comment_id: int):
     :param comment_id: Идентификатор комментария
     :return: Пустой словарь {} при успехе, иначе Возникшие ошибки
     """
-    (data, errors) = comment_validate()
+    record = get_comment(db_conn(), comment_id)
+    if record is None:
+        return resp(404, {"errors": [{"error": "Комментарий не найден", "comment_id": comment_id}]})
+    data = flask.request.get_json()
+    for x in Comment.data_fields:
+        if x not in data:
+            data[x] = record[x]
+
+    (data, errors) = comment_validate(data)
     if errors:
         return resp(400, {"errors": errors})
 
@@ -113,10 +134,10 @@ def delete_comment(comment_id: int):
     Комментарию устанавливается флаг удалённого.
 
     :param comment_id: Идентификатор комментария
-    :return: Пустой словарь {} при успехе, иначе Возникшие ошибки
+    :return: Пустой словарь {} при успехе, иначе Возникшие ошибки. При попытке удаеления ветви возвращает статус 400.
     """
     try:
         num_deleted = remove_comment(db_conn(), comment_id)
     except Exception as e:
         return resp(400, {"errors": str(e)})
-    return resp(affected_num_to_code(num_deleted), {})
+    return resp(affected_num_to_code(num_deleted, 400), {})
