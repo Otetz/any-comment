@@ -5,7 +5,7 @@ import flask
 from flask import Blueprint
 
 from app.blueprints.doc import auto
-from app.common import db_conn, resp, affected_num_to_code, pagination
+from app.common import db_conn, resp, affected_num_to_code, pagination, DatabaseException
 from app.posts import get_posts, get_post, Post, remove_post, new_post, update_post
 
 posts = Blueprint('posts', __name__)
@@ -63,7 +63,7 @@ def post_post():
 
     try:
         record = new_post(db_conn(), data)
-    except Exception as e:
+    except DatabaseException as e:
         return resp(400, {"errors": str(e)})
     return resp(200, record)
 
@@ -99,7 +99,7 @@ def put_post(post_id: int):
 
     try:
         num_updated = update_post(db_conn(), post_id, data)
-    except Exception as e:
+    except DatabaseException as e:
         return resp(400, {"errors": str(e)})
     return resp(affected_num_to_code(num_updated), {})
 

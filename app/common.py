@@ -1,10 +1,21 @@
+import ujson as json
 from typing import Dict, Any
 
 import flask
 import psycopg2
 from flask import current_app as app, request
-import ujson as json
 
+
+# region Exceptions
+class AnyCommentException(Exception):
+    pass
+
+
+class DatabaseException(AnyCommentException):
+    pass
+
+
+# endregion
 
 def db_conn():
     return psycopg2.connect(app.config['DB_URI'])

@@ -1,5 +1,9 @@
 from typing import NamedTuple, List, Dict, Any, Optional, Tuple
 
+import psycopg2
+
+from app.common import DatabaseException
+
 
 class Post(NamedTuple('Post', [('entityid', int), ('postid', int), ('userid', int), ('title', str), ('text', str)])):
     """
@@ -77,8 +81,8 @@ def new_post(conn, data) -> Dict[str, Any]:
         (post_id, entity_id) = cur.fetchone()
         conn.commit()
         cur.close()
-    except:
-        raise
+    except psycopg2.DatabaseError as e:
+        raise DatabaseException(e)
     # noinspection PyArgumentList
     return Post(entity_id, post_id, data['userid'], data['title'], data['text']).dict
 
@@ -99,8 +103,8 @@ def remove_post(conn, post_id: int) -> int:
         cnt = cur.rowcount
         conn.commit()
         cur.close()
-    except:
-        raise
+    except psycopg2.DatabaseError as e:
+        raise DatabaseException(e)
     return cnt
 
 
@@ -126,6 +130,6 @@ def update_post(conn, post_id: int, data: Dict[str, Any]) -> int:
         cnt = cur.rowcount
         conn.commit()
         cur.close()
-    except:
-        raise
+    except psycopg2.DatabaseError as e:
+        raise DatabaseException(e)
     return cnt

@@ -5,7 +5,7 @@ import flask
 from flask import Blueprint
 
 from app.blueprints.doc import auto
-from app.common import db_conn, resp, affected_num_to_code, pagination
+from app.common import db_conn, resp, affected_num_to_code, pagination, DatabaseException
 from app.users import get_users, get_user, User, remove_user, new_user, update_user
 
 users = Blueprint('users', __name__)
@@ -61,7 +61,7 @@ def post_user():
 
     try:
         record = new_user(db_conn(), data)
-    except Exception as e:
+    except DatabaseException as e:
         return resp(400, {"errors": str(e)})
     return resp(200, record)
 
@@ -97,7 +97,7 @@ def put_user(user_id: int):
 
     try:
         num_updated = update_user(db_conn(), user_id, data)
-    except Exception as e:
+    except DatabaseException as e:
         return resp(400, {"errors": str(e)})
     return resp(affected_num_to_code(num_updated), {})
 

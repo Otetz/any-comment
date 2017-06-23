@@ -1,5 +1,9 @@
 from typing import NamedTuple, List, Dict, Any, Optional, Tuple
 
+import psycopg2
+
+from app.common import DatabaseException
+
 
 class User(NamedTuple('User', [('entityid', int), ('userid', int), ('name', str)])):
     """
@@ -73,8 +77,8 @@ def new_user(conn, data) -> Dict[str, Any]:
         (user_id, entity_id) = cur.fetchone()
         conn.commit()
         cur.close()
-    except:
-        raise
+    except psycopg2.DatabaseError as e:
+        raise DatabaseException(e)
     # noinspection PyArgumentList
     return User(entity_id, user_id, data['name']).dict
 
@@ -95,8 +99,8 @@ def remove_user(conn, user_id: int) -> int:
         cnt = cur.rowcount
         conn.commit()
         cur.close()
-    except:
-        raise
+    except psycopg2.DatabaseError as e:
+        raise DatabaseException(e)
     return cnt
 
 
@@ -116,6 +120,6 @@ def update_user(conn, user_id: int, data: Dict[str, Any]) -> int:
         cnt = cur.rowcount
         conn.commit()
         cur.close()
-    except:
-        raise
+    except psycopg2.DatabaseError as e:
+        raise DatabaseException(e)
     return cnt

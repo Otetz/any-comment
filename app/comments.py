@@ -1,7 +1,10 @@
 import datetime
 from typing import NamedTuple, List, Dict, Any, Optional, Tuple
 
+import psycopg2
 from dateutil.tz import tzlocal
+
+from app.common import DatabaseException
 
 
 class Comment(NamedTuple('Comment',
@@ -104,8 +107,8 @@ def new_comment(conn, data) -> Dict[str, Any]:
         (comment_id, entity_id) = cur.fetchone()
         conn.commit()
         cur.close()
-    except:
-        raise
+    except psycopg2.DatabaseError as e:
+        raise DatabaseException(e)
     # noinspection PyArgumentList
     return Comment(entity_id, comment_id, data['userid'], data['datetime'], data['parentid'], data['text'],
                    data['deleted']).dict
@@ -140,8 +143,8 @@ def remove_comment(conn, comment_id: int) -> Optional[int]:
     data['deleted'] = True
     try:
         cnt = update_comment(conn, comment_id, data=data)
-    except:
-        raise
+    except psycopg2.DatabaseError as e:
+        raise DatabaseException(e)
     return cnt
 
 
@@ -173,6 +176,6 @@ def update_comment(conn, comment_id: int, data: Dict[str, Any]) -> int:
         cnt = cur.rowcount
         conn.commit()
         cur.close()
-    except:
-        raise
+    except psycopg2.DatabaseError as e:
+        raise DatabaseException(e)
     return cnt

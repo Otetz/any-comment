@@ -8,7 +8,7 @@ from flask import Blueprint
 
 from app.blueprints.doc import auto
 from app.comments import get_comments, get_comment, Comment, remove_comment, new_comment, update_comment
-from app.common import db_conn, resp, affected_num_to_code, pagination
+from app.common import db_conn, resp, affected_num_to_code, pagination, DatabaseException
 
 comments = Blueprint('comments', __name__)
 
@@ -74,7 +74,7 @@ def post_comment():
 
     try:
         record = new_comment(db_conn(), data)
-    except Exception as e:
+    except DatabaseException as e:
         return resp(400, {"errors": str(e)})
     record['datetime'] = record['datetime'].isoformat()
     return resp(200, record)
@@ -120,7 +120,7 @@ def put_comment(comment_id: int):
 
     try:
         num_updated = update_comment(db_conn(), comment_id, data)
-    except Exception as e:
+    except DatabaseException as e:
         return resp(400, {"errors": str(e)})
     return resp(affected_num_to_code(num_updated), {})
 
@@ -138,6 +138,6 @@ def delete_comment(comment_id: int):
     """
     try:
         num_deleted = remove_comment(db_conn(), comment_id)
-    except Exception as e:
+    except DatabaseException as e:
         return resp(400, {"errors": str(e)})
     return resp(affected_num_to_code(num_deleted, 400), {})
