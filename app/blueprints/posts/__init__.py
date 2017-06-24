@@ -2,11 +2,12 @@
 from typing import Dict, Any, List, Optional
 
 import flask
-from flask import Blueprint
+from flask import Blueprint, Response, stream_with_context
 
 from app.blueprints.doc import auto
-from app.common import db_conn, resp, affected_num_to_code, pagination, DatabaseException
-from app.posts import get_posts, get_post, Post, remove_post, new_post, update_post, first_level_comments
+from app.common import db_conn, resp, affected_num_to_code, pagination, DatabaseException, to_json
+from app.posts import get_posts, get_post, Post, remove_post, new_post, update_post, first_level_comments, \
+    descendant_comments
 
 posts = Blueprint('posts', __name__)
 
@@ -147,3 +148,28 @@ def get_first_level_comments(post_id: int):
     for rec in records:
         rec['datetime'] = rec['datetime'].isoformat()
     return resp(200, {'response': records, 'total': total, 'pages': int(total / per_page) + 1})
+
+
+@posts.route('/posts/<int:post_id>/descendants', methods=['GET'])
+@auto.doc(groups=['posts'])
+def get_descendants(post_id: int):
+    """
+    Получение всех комментариев для указанного поста.
+
+    :param post_id: Идентификатор поста
+    :return: Список всех комментариев к посту в JSON-стриме
+    """
+
+    def _generate(conn, cid):
+        yield "[\n"
+        first = True
+        for rec in descendant_comments(conn, cid):
+            msg = to_json(rec)
+            if not first:
+                msg = ',\n' + msg
+            yield msg
+            first = False
+        yield "]\n"
+
+    return Response(stream_with_context(_generate(db_conn(), post_id)),
+                    mimetype='application/json; encoding="urf-8"')

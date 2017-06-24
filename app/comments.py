@@ -1,10 +1,10 @@
 import datetime
-from typing import List, Dict, Any, Optional, Tuple
+from typing import List, Dict, Any, Optional, Tuple, Iterator
 
 import psycopg2
 from dateutil.tz import tzlocal
 
-from app.common import DatabaseException, entity_first_level_comments
+from app.common import DatabaseException, entity_first_level_comments, entity_descendants
 from app.types import Comment
 
 
@@ -170,7 +170,22 @@ def first_level_comments(conn, comment_id: int, offset: int = 0, limit: int = 10
     :return: Общее количество и Список комментариев первого уровня вложенности
     :rtype: tuple
     """
-    post = get_comment(conn, comment_id)
-    if post is None:
+    comment = get_comment(conn, comment_id)
+    if comment is None:
         return 0, []
-    return entity_first_level_comments(conn, post['entityid'], offset, limit)
+    return entity_first_level_comments(conn, comment['entityid'], offset, limit)
+
+
+def descendants(conn, comment_id: int) -> Iterator:
+    """
+    Все дочерние комментарии для указанного родительского.
+
+    :param conn: Psycopg2 соединение
+    :param comment_id: Идентификатор родительского комментария
+    :return: Итератор всех дочерних комментариев
+    :rtype: iterator
+    """
+    comment = get_comment(conn, comment_id)
+    if comment is None:
+        raise StopIteration
+    return entity_descendants(conn, comment['entityid'])

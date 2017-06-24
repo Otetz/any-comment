@@ -1,8 +1,8 @@
-from typing import List, Dict, Any, Optional, Tuple
+from typing import List, Dict, Any, Optional, Tuple, Iterator
 
 import psycopg2
 
-from app.common import DatabaseException, entity_first_level_comments
+from app.common import DatabaseException, entity_first_level_comments, entity_descendants
 from app.types import User
 
 
@@ -124,3 +124,18 @@ def first_level_comments(conn, user_id: int, offset: int = 0, limit: int = 100) 
     if user is None:
         return 0, []
     return entity_first_level_comments(conn, user['entityid'], offset, limit)
+
+
+def descendant_comments(conn, user_id: int) -> Iterator:
+    """
+    Все комментарии для указанного пользователя.
+
+    :param conn: Psycopg2 соединение
+    :param user_id: Идентификатор пользователя
+    :return: Итератор всех комментариев к пользователю
+    :rtype: iterator
+    """
+    user = get_user(conn, user_id)
+    if user is None:
+        raise StopIteration
+    return entity_descendants(conn, user['entityid'])

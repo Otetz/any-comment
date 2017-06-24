@@ -1,5 +1,5 @@
 import ujson as json
-from typing import Dict, Any, Tuple, List
+from typing import Dict, Any, Tuple, List, Iterator
 
 import flask
 import psycopg2
@@ -93,3 +93,25 @@ def entity_first_level_comments(conn, entityid: int, offset: int = 0, limit: int
     comments = [Comment(*rec).dict for rec in cur.fetchall()]
     cur.close()
     return total, comments
+
+
+def entity_descendants(conn, entity_id: int, batch_size: int = 50) -> Iterator:
+    """
+    Все дочерние комментарии для указанной сущности.
+
+    :param conn: Psycopg2 соединение
+    :param entity_id: Идентификатор родительской сущности
+    :param batch_size: Размер курсора, по умолчанию 50
+    :return: Итератор всех дочерних комментариев
+    :rtype: iterator
+    """
+    # cur = conn.cursor("tree_cursor")
+    cur = conn.cursor()
+    cur.itersize = batch_size
+    # noinspection SqlResolve
+    cur.execute("SELECT entityid, commentid, userid, datetime, parentid, text, deleted "
+                "FROM comments_tree(%s);", [entity_id])
+    for rec in cur:
+        yield Comment(*rec).dict
+    cur.close()
+    conn.commit()

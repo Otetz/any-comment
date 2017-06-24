@@ -9,6 +9,7 @@
 * [PUT /users/{user_id} — Изменить информацио о Пользователе](#put-usersuser_id--Изменить-информацио-о-Пользователе)
 * [DELETE /users/{user_id} — Удалить Пользователя](#delete-usersuser_id--Удалить-Пользователя)
 * [GET /users/{user_id}/first_level — Комментарии первого уровня](#get-usersuser_idfirst_level--Комментарии-первого-уровня)
+* [GET /users/{user_id}/descendants — Все комментарии](#get-usersuser_iddescendants--Все-комментарии)
 
 ## GET /users/ — Показать всех Пользователей
 **Аргументы**: Нет  
@@ -154,4 +155,41 @@ curl -X GET http://HOSTNAME/api/1.0/users/428935/first_level
     }
   ]
 }
+```
+
+## GET /users/{user_id}/descendants — Все комментарии
+
+**Аргументы**: 
+- *user_id* (int) Идентификатор пользователя
+
+**Возвращает**: Список всех комментариев к пользователю в JSON-стриме
+
+**Пример запроса**:
+```bash
+curl -X GET http://HOSTNAME/api/1.0/users/320231/descendants \
+  -H 'Connection: Keep-Alive'
+```
+**Пример ответа**:
+```json
+[
+{
+  "deleted": false,
+  "userid": 326,
+  "entityid": 321089,
+  "commentid": 320344,
+  "text": "Erlang является декларативным языком программирования, который скорее используется …",
+  "datetime": 1497973918,
+  "parentid": 321044
+}
+,
+{
+  "deleted": false,
+  "userid": 334,
+  "entityid": 321156,
+  "commentid": 320411,
+  "text": "Свой синтаксис и некоторые концепции Erlang унаследовал от языка логического …",
+  "datetime": 1497973919,
+  "parentid": 321089
+}
+]
 ```

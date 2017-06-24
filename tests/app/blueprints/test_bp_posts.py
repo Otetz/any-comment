@@ -100,3 +100,14 @@ def test_first_level_comments(app, client):
         assert 'response' in res.json
         assert res.json['response'] is not None
         assert isinstance(res.json['response'], list)
+
+
+@flaky(max_runs=10, min_passes=1)
+def test_get_descendants(app, client):
+    with app.app_context():
+        post = random.choice(get_posts(db_conn())[1])
+        res = client.get(url_for('posts.get_descendants', post_id=post['postid']))
+        assert res is not None
+        assert res.status_code == 200
+        assert res.json is not None
+        assert len(res.json) >= 1

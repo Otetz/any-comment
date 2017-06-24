@@ -4,6 +4,7 @@ import random
 from flaky import flaky
 
 from app.comments import first_level_comments as comments_first_level_comments
+from app.common import entity_descendants
 from app.posts import get_posts, first_level_comments as post_first_level_comments
 from app.users import get_users
 
@@ -51,3 +52,17 @@ def test_first_level_comments(conn):
         assert comments[0][field] is not None
     for c in comments:
         assert c['parentid'] == comment['entityid']
+
+
+@flaky(max_runs=10, min_passes=1)
+def test_entity_descendants(conn):
+    posts = get_posts(conn)[1]
+    post = random.choice(posts)
+    i = 0
+    for rec in entity_descendants(conn, post['entityid']):
+        assert isinstance(rec, dict)
+        assert len(rec) == 7
+        i += 1
+        if i > 10:
+            break
+    assert i != 0

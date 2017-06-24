@@ -3,8 +3,9 @@ import random
 
 from dateutil.tz import tzlocal
 from elizabeth import Generic
+from flaky import flaky
 
-from app.comments import get_comments, get_comment, new_comment, remove_comment, update_comment
+from app.comments import get_comments, get_comment, new_comment, remove_comment, update_comment, descendants
 from app.users import get_users
 
 g = Generic('ru')
@@ -114,3 +115,15 @@ def test_update_comment(conn):
     assert comment3['text'] != comment1['text']
     assert comment3['text'] == text2
     remove_comment(conn, comment1['commentid'])
+
+
+@flaky(max_runs=10, min_passes=1)
+def test_descendants(conn):
+    comment = random.choice(get_comments(conn)[1])
+    i = 0
+    for rec in descendants(conn, comment['commentid']):
+        assert isinstance(rec, dict)
+        assert len(rec) == 7
+        i += 1
+        if i > 10:
+            break

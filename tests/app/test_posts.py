@@ -1,8 +1,9 @@
 import random
 
 from elizabeth import Generic
+from flaky import flaky
 
-from app.posts import get_posts, get_post, new_post, remove_post, update_post
+from app.posts import get_posts, get_post, new_post, remove_post, update_post, descendant_comments
 from app.users import get_users
 
 g = Generic('ru')
@@ -98,3 +99,15 @@ def test_update_post(conn):
     assert post3['title'] == title2
     assert post3['text'] == post1['text']
     remove_post(conn, post1['postid'])
+
+
+@flaky(max_runs=10, min_passes=1)
+def test_descendants(conn):
+    post = random.choice(get_posts(conn)[1])
+    i = 0
+    for rec in descendant_comments(conn, post['postid']):
+        assert isinstance(rec, dict)
+        assert len(rec) == 7
+        i += 1
+        if i > 10:
+            break
