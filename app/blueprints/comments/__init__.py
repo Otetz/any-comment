@@ -5,7 +5,7 @@ from typing import Dict, Any, List, Optional
 import dateutil.parser
 import flask
 from dateutil.tz import tzlocal
-from flask import Blueprint, stream_with_context, Response
+from flask import Blueprint, stream_with_context, Response, redirect, url_for
 
 from app.blueprints.doc import auto
 from app.comments import get_comments, get_comment, remove_comment, new_comment, update_comment, first_level_comments, \
@@ -81,15 +81,14 @@ def post_comment():
         record = new_comment(db_conn(), data)
     except DatabaseException as e:
         return resp(400, {"errors": str(e)})
-    record['datetime'] = record['datetime'].isoformat()
-    return resp(200, record)
+    return redirect(url_for('comments.comment', comment_id=record[0]), code=302)
 
 
 @comments.route('/comments/<int:comment_id>', methods=['GET'])
 @auto.doc(groups=['comments'])
 def comment(comment_id: int):
     """
-    Получить информацио о Комментарии.
+    Получить информацию о Комментарии.
 
     :param int comment_id: Идентификатор комментария
     :return: Запись с информацией о запрошенном Комментарии либо Сообщение об ощибке
@@ -106,7 +105,7 @@ def comment(comment_id: int):
 @auto.doc(groups=['comments'])
 def put_comment(comment_id: int):
     """
-    Изменить информацио Комментария.
+    Изменить информацию в Комментарии.
 
     :param int comment_id: Идентификатор комментария
     :return: Пустой словарь {} при успехе, иначе Возникшие ошибки
@@ -114,6 +113,7 @@ def put_comment(comment_id: int):
     record = get_comment(db_conn(), comment_id)
     if record is None:
         return resp(404, {"errors": [{"error": "Комментарий не найден", "comment_id": comment_id}]})
+    record['userid'] = record['author']['userid']
     data = flask.request.get_json()
     for x in Comment.data_fields:
         if x not in data:
@@ -185,6 +185,7 @@ def get_descendants(comment_id: int):
         yield "[\n"
         first = True
         for rec in descendants(conn, cid):
+            rec['datetime'] = rec['datetime'].isoformat()
             msg = to_json(rec)
             if not first:
                 msg = ',\n' + msg

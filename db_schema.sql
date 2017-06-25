@@ -35,6 +35,12 @@ CREATE INDEX comments_entityid_index
 CREATE INDEX comments_commentid_deleted_index
   ON comments (commentid, deleted);
 
+CREATE INDEX comments_userid_index
+  ON comments (userid);
+
+CREATE INDEX comments_datetime_index
+  ON comments (datetime);
+
 CREATE INDEX comments_parentid_deleted_index
   ON comments (parentid, deleted);
 
@@ -102,6 +108,12 @@ CREATE TABLE comments_history
   text        TEXT DEFAULT '' :: TEXT                NOT NULL
 );
 
+CREATE INDEX comments_history_commentid_index
+  ON comments_history (commentid);
+
+CREATE INDEX comments_history_ch_datetime_index
+  ON comments_history (ch_datetime);
+
 CREATE FUNCTION comments_tree(parent_id INTEGER)
   RETURNS SETOF COMMENTS
 LANGUAGE SQL
@@ -121,3 +133,42 @@ SELECT *
 FROM t
 ORDER BY entityid
 $$;
+
+CREATE FUNCTION comment_history(comment_id INTEGER, OUT entityid INTEGER, OUT commentid INTEGER, OUT userid INTEGER,
+                                                    OUT datetime TIMESTAMP WITH TIME ZONE, OUT parentid INTEGER,
+                                                    OUT text TEXT, OUT deleted BOOLEAN,
+                                                    OUT ch_datetime TIMESTAMP WITH TIME ZONE, OUT ch_userid INTEGER,
+                                                    OUT id INTEGER)
+  RETURNS SETOF RECORD
+LANGUAGE SQL
+AS $$
+SELECT
+  entityid,
+  commentid,
+  userid,
+  datetime,
+  parentid,
+  text,
+  deleted,
+  NULL AS ch_datetime,
+  NULL AS ch_userid,
+  NULL AS id
+FROM comments
+WHERE commentid = comment_id
+UNION ALL
+(SELECT
+   entityid,
+   commentid,
+   userid,
+   datetime,
+   parentid,
+   text,
+   FALSE,
+   ch_datetime,
+   ch_userid,
+   id
+ FROM comments_history
+ WHERE commentid = comment_id
+ ORDER BY ch_datetime DESC)
+$$;
+

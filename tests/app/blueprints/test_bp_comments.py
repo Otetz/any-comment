@@ -1,6 +1,9 @@
+import datetime
 import random
+from urllib.parse import urlparse
 
 import dateutil.parser
+from dateutil.tz import tzlocal
 from elizabeth import Generic
 from flaky import flaky
 from flask import url_for
@@ -39,7 +42,17 @@ def test_get_one(app, client):
         assert isinstance(res.json['response'], dict)
         assert len(res.json['response']) == 7
         for name in ['entityid', 'commentid'] + Comment.data_fields:
+            if name == 'userid':
+                continue
             assert name in res.json['response']
+        assert isinstance(res.json['response']['author'], dict)
+        assert len(res.json['response']['author']) == 2
+        assert 'userid' in res.json['response']['author']
+        assert isinstance(res.json['response']['author']['userid'], int)
+        assert res.json['response']['author']['userid'] > 0
+        assert 'name' in res.json['response']['author']
+        assert isinstance(res.json['response']['author']['name'], str)
+        assert res.json['response']['author']['name'] != ''
         assert dateutil.parser.parse(res.json['response']['datetime'])
 
 
@@ -54,7 +67,7 @@ def test_put(app, client):
                          content_type='application/json')
         assert res.status_code == 200
         comment2 = get_comment(db_conn(), comment_id)
-        for name in ['entityid', 'commentid', 'userid', 'parentid', 'datetime', 'deleted']:
+        for name in ['entityid', 'commentid', 'author', 'parentid', 'datetime', 'deleted']:
             assert comment2[name] == comment[name]
         assert comment2['text'] == text2
 
@@ -64,19 +77,20 @@ def test_post(app, client):
         userid = random.choice(get_users(db_conn())[1])['userid']
         parentid = random.choice(get_comments(db_conn())[1])['entityid']
         text = g.text.text(quantity=random.randrange(1, 3))
+        dt = datetime.datetime.now(tz=tzlocal())
         res = client.post(url_for('comments.post_comment'), content_type='application/json',
                           data=to_json({'userid': userid, 'parentid': parentid, 'text': text}))
-        assert res.status_code == 200
-        assert res is not None
-        assert res.json is not None
-        assert isinstance(res.json, dict)
-        assert len(res.json) == 7
+        assert res.status_code == 302
+        assert urlparse(res.location).path.startswith(url_for('comments.comments_list'))
+        new_comment_id = int(urlparse(res.location).path.split('/')[-1])
+        comment2 = get_comment(db_conn(), new_comment_id)
         for name in ['entityid', 'commentid'] + Comment.data_fields:
-            assert name in res.json
-        assert dateutil.parser.parse(res.json['datetime'])
-        comment2 = get_comment(db_conn(), res.json['commentid'])
-        comment2['datetime'] = comment2['datetime'].isoformat()
-        assert comment2 == res.json
+            if name != 'userid':
+                assert name in comment2
+        assert comment2['author']['userid'] == userid
+        assert comment2['parentid'] == parentid
+        assert comment2['text'] == text
+        assert (comment2['datetime'] - dt).microseconds < 10000
 
 
 def test_delete(app, client):
@@ -84,10 +98,11 @@ def test_delete(app, client):
         userid = random.choice(get_users(db_conn())[1])['userid']
         parentid = random.choice(get_comments(db_conn())[1])['entityid']
         text = g.text.text(quantity=random.randrange(1, 3))
-        comment1 = new_comment(db_conn(), {'userid': userid, 'parentid': parentid, 'text': text})
-        res = client.delete(url_for('comments.delete_comment', comment_id=comment1['commentid']))
+        comment1_id = new_comment(db_conn(), {'userid': userid, 'parentid': parentid, 'text': text})[0]
+        assert comment1_id is not None
+        res = client.delete(url_for('comments.delete_comment', comment_id=comment1_id))
         assert res.status_code == 200
-        comment3 = get_comment(db_conn(), comment1['commentid'])
+        comment3 = get_comment(db_conn(), comment1_id)
         assert comment3 is not None
         assert comment3['deleted'] is True
 

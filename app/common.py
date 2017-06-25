@@ -4,8 +4,7 @@ from typing import Dict, Any, Tuple, List, Iterator
 import flask
 import psycopg2
 from flask import current_app as app, request
-
-from app.types import Comment
+from psycopg2.extras import RealDictCursor
 
 
 # region Exceptions
@@ -81,16 +80,19 @@ def entity_first_level_comments(conn, entityid: int, offset: int = 0, limit: int
     :return: Общее количество и Список комментариев первого уровня вложенности
     :rtype: tuple
     """
-    cur = conn.cursor()
-    cur.execute("SET timezone = 'Europe/Moscow';")
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     cur.execute("SELECT COUNT(entityid) FROM comments WHERE parentid = %s AND deleted = %s;", [entityid, False])
-    total = cur.fetchone()[0]
-
-    cur.execute("SELECT entityid, commentid, userid, datetime, parentid, text, deleted "
-                "FROM comments "
+    total = cur.fetchone()['count']
+    cur.execute("SET timezone = 'Europe/Moscow';")
+    cur.execute("SELECT C.entityid, C.commentid, C.userid, C.datetime, C.parentid, C.text, C.deleted, U.name "
+                "FROM comments AS C "
+                "LEFT JOIN users AS U ON U.userid = C.userid "    
                 "WHERE parentid = %s AND deleted = %s "
                 "LIMIT %s OFFSET %s;", [entityid, False, limit, offset])
-    comments = [Comment(*rec).dict for rec in cur.fetchall()]
+    comments = []
+    for rec in cur.fetchall():
+        rec['author'] = {'userid': rec.pop('userid'), 'name': rec.pop('name')}
+        comments.append(rec)
     cur.close()
     return total, comments
 
@@ -105,13 +107,16 @@ def entity_descendants(conn, entity_id: int, batch_size: int = 50) -> Iterator:
     :return: Итератор всех дочерних комментариев
     :rtype: iterator
     """
-    # cur = conn.cursor("tree_cursor")
-    cur = conn.cursor()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     cur.itersize = batch_size
+    cur.execute("SET timezone = 'Europe/Moscow';")
     # noinspection SqlResolve
-    cur.execute("SELECT entityid, commentid, userid, datetime, parentid, text, deleted "
-                "FROM comments_tree(%s);", [entity_id])
+    cur.execute("SELECT C.entityid, C.commentid, C.userid, C.datetime, C.parentid, C.text, C.deleted, U.name "
+                "FROM comments_tree(%s) AS C "
+                "LEFT JOIN users AS U ON U.userid = C.userid "
+                "WHERE C.deleted = FALSE;", [entity_id])
     for rec in cur:
-        yield Comment(*rec).dict
+        rec['author'] = {'userid': rec.pop('userid'), 'name': rec.pop('name')}
+        yield rec
     cur.close()
     conn.commit()

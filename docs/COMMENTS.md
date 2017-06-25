@@ -5,9 +5,9 @@
 
 * [GET /comments/ — Показать все Комментарии](#get-comments--Показать-все-Комментарии)
 * [POST /comments/ — Создать новый Комментарий](#post-comments--Создать-новый-Комментарий)
-* [GET /comments/{comment_id} – Получить информацио о Комментарии](#get-commentscomment_id--Получить-информацио-о-Комментарии)
-* [PUT /comments/{comment_id} — Изменить информацио о Комментарии](#put-commentscomment_id--Изменить-информацио-о-Комментарии)
-* [DELETE /comments/{comment_id} — Удалить Комментарий](#delete-commentscomment_id--Удалить-Комментарии)
+* [GET /comments/{comment_id} – Получить информацию о Комментарии](#get-commentscomment_id--Получить-информацию-о-Комментарии)
+* [PUT /comments/{comment_id} — Изменить информацию в Комментарии](#put-commentscomment_id--Изменить-информацию-в-Комментарии)
+* [DELETE /comments/{comment_id} — Удалить Комментарий](#delete-commentscomment_id--Удалить-Комментарий)
 * [GET /comments/{comment_id}/first_level — Комментарии первого уровня](#get-commentscomment_idfirst_level--Комментарии-первого-уровня)
 * [GET /comments/{comment_id}/descendants — Все дочерние комментарии](#get-commentscomment_iddescendants--Все-дочерние-комментарии)
 
@@ -29,7 +29,10 @@ curl -X GET http://HOSTNAME/api/1.0/comments/
   "total": 2,
   "response": [
     {
-      "userid": 325,
+      "author": {
+        "name": "Маргарита Лукина",
+        "userid": 318
+      },
       "datetime": "2017-06-20T19:03:23.727040+03:00",
       "deleted": false,
       "entityid": 429699,
@@ -38,7 +41,10 @@ curl -X GET http://HOSTNAME/api/1.0/comments/
       "parentid": 427420
     },
     {
-      "userid": 324,
+      "author": {
+        "name": "Герт Гришин",
+        "userid": 333
+      },
       "datetime": "2017-06-20T19:03:23.727040+03:00",
       "deleted": false,
       "entityid": 429700,
@@ -56,24 +62,22 @@ curl -X GET http://HOSTNAME/api/1.0/comments/
 
 **Пример запроса**:
 ```bash
-curl -X POST http://HOSTNAME/api/1.0/comments/ \
+curl -D - -s -o /dev/null -X POST http://HOSTNAME/api/1.0/comments/ \
   -H 'content-type: application/json' \
   -d '{"userid": 324, "text": "Erlang является декларативным языком программирования, который скорее …", "parentid": 427421}'
 ```
 **Пример ответа**:
-```json
-{
-  "parentid": 427421,
-  "entityid": 533030,
-  "text": "Erlang является декларативным языком программирования, который скорее …",
-  "datetime": "2017-06-23T23:37:54.340601+03:00",
-  "userid": 324,
-  "deleted": false,
-  "commentid": 531997
-}
+```rest
+HTTP/1.0 302 FOUND
+Content-Type: text/html; charset=utf-8
+Content-Length: 255
+Location: http://HOSTNAME/api/1.0/comments/532187
+Server: Werkzeug/0.12.2 Python/3.5.2
+Date: Sun, 25 Jun 2017 14:47:20 GMT
+
 ```
 
-## GET /comments/{comment_id} – Получить информацио о Комментарии
+## GET /comments/{comment_id} – Получить информацию о Комментарии
 **Аргументы**: 
 - *comment_id* (int) Идентификатор комментария
 
@@ -91,7 +95,10 @@ curl -X GET http://HOSTNAME/api/1.0/comments/531997
     "entityid": 533030,
     "text": "Erlang является декларативным языком программирования, который скорее …",
     "datetime": "2017-06-23T23:37:54.340601+03:00",
-    "userid": 324,
+    "author": {
+      "name": "Маргарита Лукина",
+      "userid": 318
+    },
     "deleted": false,
     "commentid": 531997
   }
@@ -109,7 +116,7 @@ curl -X GET http://HOSTNAME/api/1.0/comments/531997
 }
 ```
 
-## PUT /comments/{comment_id} — Изменить информацио о Комментарии
+## PUT /comments/{comment_id} — Изменить информацию в Комментарии
 **Аргументы**: 
 - *comment_id* (int) Идентификатор комментария  
 
@@ -126,7 +133,7 @@ curl -X PUT http://HOSTNAME/api/1.0/comments/531997 \
 **Аргументы**: 
 - *comment_id* (int) Идентификатор Комментария
 
-**Возвращает**: Список комментарии первого уровня вложенности при успехе, иначе Возникшие ошибки. При попытке удаеления ветви возвращает статус **400**.
+**Возвращает**: Список комментариев первого уровня вложенности при успехе, иначе Возникшие ошибки. При попытке удаеления ветви возвращает статус **400**.
 
 **Пример запроса**:
 ```bash
@@ -155,7 +162,10 @@ curl -X GET http://HOSTNAME/api/1.0/comments/428954/first_level
       "entityid": 532842,
       "parentid": 429699,
       "commentid": 531905,
-      "userid": 334,
+      "author": {
+        "name": "Маргарита Лукина",
+        "userid": 318
+      },
       "deleted": false,
       "text": "Python — высокоуровневый язык программирования общего назначения, ориентированный …",
       "datetime": "2017-06-23T01:02:30.439275+03:00"
@@ -190,21 +200,27 @@ curl -X GET http://HOSTNAME/api/1.0/comments/320299/descendants \
 [
 {
   "deleted": false,
-  "userid": 326,
+  "author": {
+    "name": "Маргарита Лукина",
+    "userid": 318
+  },
   "entityid": 321089,
   "commentid": 320344,
   "text": "Erlang является декларативным языком программирования, который скорее используется …",
-  "datetime": 1497973918,
+  "datetime": "2017-06-22T22:30:06.871942+03:00",
   "parentid": 321044
 }
 ,
 {
   "deleted": false,
-  "userid": 334,
+  "author": {
+    "name": "Герт Гришин",
+    "userid": 333
+  },
   "entityid": 321156,
   "commentid": 320411,
   "text": "Свой синтаксис и некоторые концепции Erlang унаследовал от языка логического …",
-  "datetime": 1497973919,
+  "datetime": "2017-06-22T22:32:15.735642+03:00",
   "parentid": 321089
 }
 ]

@@ -34,7 +34,7 @@ def test_first_level_comments(conn):
     assert comments[0] is not None
     assert isinstance(comments[0], dict)
     assert len(comments[0]) == 7
-    for field in ['entityid', 'commentid', 'userid', 'parentid']:
+    for field in ['entityid', 'commentid', 'parentid']:
         assert field in comments[0]
         assert isinstance(comments[0][field], int)
         assert comments[0][field] != 0
@@ -50,6 +50,14 @@ def test_first_level_comments(conn):
         assert field in comments[0]
         assert isinstance(comments[0][field], datetime.datetime)
         assert comments[0][field] is not None
+    assert isinstance(comments[0]['author'], dict)
+    assert len(comments[0]['author']) == 2
+    assert 'userid' in comments[0]['author']
+    assert isinstance(comments[0]['author']['userid'], int)
+    assert comments[0]['author']['userid'] > 0
+    assert 'name' in comments[0]['author']
+    assert isinstance(comments[0]['author']['name'], str)
+    assert comments[0]['author']['name'] != ''
     for c in comments:
         assert c['parentid'] == comment['entityid']
 

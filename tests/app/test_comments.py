@@ -19,7 +19,7 @@ def test_get_comments(conn):
     assert comments[0] is not None
     assert isinstance(comments[0], dict)
     assert len(comments[0]) == 7
-    for field in ['entityid', 'commentid', 'userid', 'parentid']:
+    for field in ['entityid', 'commentid', 'parentid']:
         assert field in comments[0]
         assert isinstance(comments[0][field], int)
         assert comments[0][field] != 0
@@ -35,6 +35,15 @@ def test_get_comments(conn):
         assert field in comments[0]
         assert isinstance(comments[0][field], datetime.datetime)
         assert comments[0][field] is not None
+    assert 'author' in comments[0]
+    assert isinstance(comments[0]['author'], dict)
+    assert len(comments[0]['author']) == 2
+    assert 'userid' in comments[0]['author']
+    assert isinstance(comments[0]['author']['userid'], int)
+    assert comments[0]['author']['userid'] > 0
+    assert 'name' in comments[0]['author']
+    assert isinstance(comments[0]['author']['name'], str)
+    assert comments[0]['author']['name'] != ''
 
 
 def test_get_comment(conn):
@@ -57,7 +66,8 @@ def test_new_comment(conn):
     parentid = random.choice(get_comments(conn)[1])['entityid']
     text = g.text.text(quantity=random.randrange(1, 3))
     dt = datetime.datetime.now(tz=tzlocal())
-    comment = new_comment(conn, {'userid': userid, 'parentid': parentid, 'text': text})
+    comment_id = new_comment(conn, {'userid': userid, 'parentid': parentid, 'text': text})[0]
+    comment = get_comment(conn, comment_id)
     assert comment is not None
     assert isinstance(comment, dict)
     assert len(comment) == 7
@@ -76,11 +86,12 @@ def test_remove_comment(conn):
     userid = random.choice(get_users(conn)[1])['userid']
     parentid = random.choice(get_comments(conn)[1])['entityid']
     text = g.text.text(quantity=random.randrange(1, 3))
-    comment1 = new_comment(conn, {'userid': userid, 'parentid': parentid, 'text': text})
-    comment2 = get_comment(conn, comment1['commentid'])
-    cnt = remove_comment(conn, comment2['commentid'])
+    comment1_id = new_comment(conn, {'userid': userid, 'parentid': parentid, 'text': text})[0]
+    comment1 = get_comment(conn, comment1_id)
+    assert comment1 is not None
+    cnt = remove_comment(conn, comment1_id)
     assert cnt == 1
-    comment3 = get_comment(conn, comment1['commentid'])
+    comment3 = get_comment(conn, comment1_id)
     assert comment3 is not None
     assert comment3['deleted'] is True
 
@@ -94,27 +105,27 @@ def test_update_comment(conn):
     userid = random.choice(get_users(conn)[1])['userid']
     parentid = random.choice(get_comments(conn)[1])['entityid']
     text2 = text1 = g.text.text(quantity=random.randrange(1, 3))
-    comment1 = new_comment(conn, {'userid': userid, 'parentid': parentid, 'text': text1})
-    assert comment1 is not None
-    comment2 = get_comment(conn, comment1['commentid'])
+    comment1_id = new_comment(conn, {'userid': userid, 'parentid': parentid, 'text': text1})[0]
+    assert comment1_id is not None
+    comment2 = get_comment(conn, comment1_id)
     assert comment2 is not None
     assert comment2['text'] == text1
     while text2 == text1:
         text2 = g.text.text(quantity=random.randrange(1, 3))
-    res = update_comment(conn, comment1['commentid'], {'text': text2})
+    res = update_comment(conn, comment1_id, {'text': text2})
     assert res is not None
     assert res == 1
-    comment3 = get_comment(conn, comment1['commentid'])
+    comment3 = get_comment(conn, comment2['commentid'])
     assert comment3 is not None
-    assert comment3['commentid'] == comment1['commentid']
-    assert comment3['entityid'] == comment1['entityid']
-    assert comment3['userid'] == comment1['userid']
-    assert comment3['parentid'] == comment1['parentid']
-    assert (comment3['datetime'] - comment1['datetime']).seconds < 1
-    assert comment3['deleted'] == comment1['deleted']
-    assert comment3['text'] != comment1['text']
+    assert comment3['commentid'] == comment2['commentid']
+    assert comment3['entityid'] == comment2['entityid']
+    assert comment3['author'] == comment2['author']
+    assert comment3['parentid'] == comment2['parentid']
+    assert (comment3['datetime'] - comment2['datetime']).seconds < 1
+    assert comment3['deleted'] == comment2['deleted']
+    assert comment3['text'] != comment2['text']
     assert comment3['text'] == text2
-    remove_comment(conn, comment1['commentid'])
+    remove_comment(conn, comment2['commentid'])
 
 
 @flaky(max_runs=10, min_passes=1)

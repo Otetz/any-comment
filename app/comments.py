@@ -3,6 +3,7 @@ from typing import List, Dict, Any, Optional, Tuple, Iterator
 
 import psycopg2
 from dateutil.tz import tzlocal
+from psycopg2.extras import RealDictCursor
 
 from app.common import DatabaseException, entity_first_level_comments, entity_descendants
 from app.types import Comment
@@ -18,21 +19,25 @@ def get_comments(conn, offset: int = 0, limit: int = 100) -> Tuple[int, List[Dic
     :return: Общее количество и Список комментариев
     :rtype: tuple
     """
-    cur = conn.cursor()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     cur.execute("SET timezone = 'Europe/Moscow';")
     # В лоб считать неудалённые записи нельзя - будет FullScan, потому немного хитрим:
     # Берем количество записей из таблицы статистики и вычитаем число удалённых записей.
     # Обе операции делаются по индексам и потому максимально быстрые.
     cur.execute("SELECT (SELECT n_live_tup FROM pg_stat_all_tables WHERE relname = 'comments') "
                 "- "
-                "(SELECT COUNT(deleted) FROM comments WHERE deleted = %s);", [True])
-    total = cur.fetchone()[0]
+                "(SELECT COUNT(deleted) FROM comments WHERE deleted = %s) AS count;", [True])
+    total = cur.fetchone()['count']
 
-    cur.execute("SELECT entityid, commentid, userid, datetime, parentid, text, deleted "
-                "FROM comments "
-                "WHERE deleted = %s "
+    cur.execute("SELECT C.entityid, C.commentid, C.userid, C.datetime, C.parentid, C.text, C.deleted, U.name "
+                "FROM comments AS C "
+                "LEFT JOIN users AS U ON U.userid = C.userid "
+                "WHERE C.deleted = %s "
                 "LIMIT %s OFFSET %s;", [False, limit, offset])
-    comments = [Comment(*rec).dict for rec in cur.fetchall()]
+    comments = []
+    for rec in cur.fetchall():
+        rec['author'] = {'userid': rec.pop('userid'), 'name': rec.pop('name')}
+        comments.append(rec)
     cur.close()
     return total, comments
 
@@ -46,19 +51,22 @@ def get_comment(conn, comment_id: int) -> Optional[Dict[str, Any]]:
     :return: Комментарий (словарь всех полей)
     :rtype: dict
     """
-    cur = conn.cursor()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     cur.execute("SET timezone = 'Europe/Moscow';")
-    cur.execute(
-        "SELECT entityid, commentid, userid, datetime, parentid, text, deleted FROM comments WHERE commentid = %s;",
-        [comment_id])
-    comments = [Comment(*rec) for rec in cur.fetchall()]
-    cur.close()
-    if comments is None or len(comments) < 1:
+    cur.execute("SELECT C.entityid, C.commentid, C.userid, C.datetime, C.parentid, C.text, C.deleted, U.name "
+                "FROM comments AS C "
+                "LEFT JOIN users AS U ON U.userid = C.userid "
+                "WHERE C.commentid = %s;",
+                [comment_id])
+    rec = cur.fetchone()
+    if not rec:
         return None
-    return comments[0].dict
+    rec['author'] = {'userid': rec.pop('userid'), 'name': rec.pop('name')}
+    cur.close()
+    return rec
 
 
-def new_comment(conn, data) -> Dict[str, Any]:
+def new_comment(conn, data) -> Tuple[int, int]:
     """
     Сохранение нового *Комментария* (:class:`app.comments.Comment`).
 
@@ -85,9 +93,7 @@ def new_comment(conn, data) -> Dict[str, Any]:
         cur.close()
     except psycopg2.DatabaseError as e:
         raise DatabaseException(e)
-    # noinspection PyArgumentList
-    return Comment(entity_id, comment_id, data['userid'], data['datetime'], data['parentid'], data['text'],
-                   data['deleted']).dict
+    return comment_id, entity_id
 
 
 def remove_comment(conn, comment_id: int) -> Optional[int]:
@@ -105,6 +111,7 @@ def remove_comment(conn, comment_id: int) -> Optional[int]:
     comment = get_comment(conn, comment_id)
     if comment is None or comment['deleted']:
         return 0
+
     cur = conn.cursor()
     cur.execute("SELECT COUNT(entityid) FROM comments WHERE parentid = %s AND deleted = %s;",
                 [comment['entityid'], False])
@@ -113,6 +120,7 @@ def remove_comment(conn, comment_id: int) -> Optional[int]:
     if cnt != 0:
         return None
 
+    comment['userid'] = comment['author']['userid']
     data = {name: comment[name] for name in Comment.data_fields}
     data['deleted'] = True
     try:
@@ -135,8 +143,9 @@ def update_comment(conn, comment_id: int, data: Dict[str, Any]) -> int:
     :rtype: int
     """
     comment = get_comment(conn, comment_id)
-    if comment is None:
+    if comment is None or comment['deleted']:
         return 0
+    comment['userid'] = comment['author']['userid']
     # Формируем полный словарь данных, для отсутствующих значений используем данные из базы
     data = {x: data.get(x, comment[x]) for x in Comment.data_fields}
     if data == comment:
