@@ -1,4 +1,5 @@
-import ujson as json
+import datetime
+import json
 from typing import Dict, Any, Tuple, List, Iterator
 
 import flask
@@ -22,6 +23,14 @@ class InvalidArgumentsException(AnyCommentException):
 
 # endregion
 
+class DateTimeEncoder(json.JSONEncoder):
+    def default(self, o):
+        if isinstance(o, (datetime.datetime, datetime.date)):
+            return o.isoformat()
+
+        return json.JSONEncoder.default(self, o)
+
+
 def db_conn():
     return psycopg2.connect(app.config['DB_URI'])
 
@@ -34,7 +43,7 @@ def json_kwargs() -> Dict[str, Any]:
 
 
 def to_json(data: Dict[str, Any]) -> str:
-    return json.dumps(data, **json_kwargs()) + "\n"
+    return json.dumps(data, cls=DateTimeEncoder, **json_kwargs()) + "\n"
 
 
 def resp(code, data: Dict[str, Any]):

@@ -135,8 +135,6 @@ def get_first_level_comments(user_id: int):
 
     offset, per_page = pagination()
     total, records = first_level_comments(db_conn(), user_id, offset=offset, limit=per_page)
-    for rec in records:
-        rec['datetime'] = rec['datetime'].isoformat()
     return resp(200, {'response': records, 'total': total, 'pages': int(total / per_page) + 1})
 
 

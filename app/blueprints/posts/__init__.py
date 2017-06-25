@@ -145,8 +145,6 @@ def get_first_level_comments(post_id: int):
 
     offset, per_page = pagination()
     total, records = first_level_comments(db_conn(), post_id, offset=offset, limit=per_page)
-    for rec in records:
-        rec['datetime'] = rec['datetime'].isoformat()
     return resp(200, {'response': records, 'total': total, 'pages': int(total / per_page) + 1})
 
 
@@ -159,17 +157,5 @@ def get_descendants(post_id: int):
     :param post_id: Идентификатор поста
     :return: Список всех комментариев к посту в JSON-стриме
     """
-
-    def _generate(conn, cid):
-        yield "[\n"
-        first = True
-        for rec in descendant_comments(conn, cid):
-            msg = to_json(rec)
-            if not first:
-                msg = ',\n' + msg
-            yield msg
-            first = False
-        yield "]\n"
-
-    return Response(stream_with_context(_generate(db_conn(), post_id)),
+    return Response(stream_with_context(to_json_stream(descendant_comments(db_conn(), post_id))),
                     mimetype='application/json; encoding="urf-8"')

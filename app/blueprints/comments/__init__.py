@@ -53,8 +53,6 @@ def comments_list():
     """
     offset, per_page = pagination()
     total, records = get_comments(db_conn(), offset=offset, limit=per_page)
-    for rec in records:
-        rec['datetime'] = rec['datetime'].isoformat()
     return resp(200, {'response': records, 'total': total, 'pages': int(total / per_page) + 1})
 
 
