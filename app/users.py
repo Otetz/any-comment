@@ -1,6 +1,7 @@
 from typing import List, Dict, Any, Optional, Tuple, Iterator
 
 import psycopg2
+from psycopg2.extras import RealDictCursor
 
 from app.common import DatabaseException, entity_first_level_comments, entity_descendants
 from app.types import User
@@ -109,7 +110,8 @@ def update_user(conn, user_id: int, data: Dict[str, Any]) -> int:
 
 def first_level_comments(conn, user_id: int, offset: int = 0, limit: int = 100) -> Tuple[int, List[Dict[str, Any]]]:
     """
-    Показать комментарии первого уровня вложенности к указанному пользователю.
+    Показать комментарии первого уровня вложенности к указанному пользователю в порядке возрастания даты создания
+    комментария.
 
     Поддерживается пагинация :func:`app.common.pagination`.
 
@@ -139,3 +141,22 @@ def descendant_comments(conn, user_id: int) -> Iterator:
     if user is None:
         raise StopIteration
     return entity_descendants(conn, user['entityid'])
+
+
+def comments(conn, user_id: int, batch_size: int = 50) -> Iterator:
+    user = get_user(conn, user_id)
+    if user is None:
+        raise StopIteration
+
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    cur.itersize = batch_size
+    cur.execute("SET timezone = 'Europe/Moscow';")
+    cur.execute("SELECT C.entityid, C.commentid, C.datetime, C.parentid, C.text, C.deleted "
+                "FROM comments AS C "
+                "WHERE C.userid = %s "
+                "ORDER BY C.datetime ASC;", [user_id])
+    for rec in cur:
+        rec['author'] = {'userid': user['userid'], 'name': user['name']}
+        yield rec
+    cur.close()
+    conn.commit()

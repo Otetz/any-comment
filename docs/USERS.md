@@ -8,8 +8,9 @@
 * [GET /users/{user_id} – Получить информацио о Пользователе](#get-usersuser_id--Получить-информацио-о-Пользователе)
 * [PUT /users/{user_id} — Изменить информацио о Пользователе](#put-usersuser_id--Изменить-информацио-о-Пользователе)
 * [DELETE /users/{user_id} — Удалить Пользователя](#delete-usersuser_id--Удалить-Пользователя)
-* [GET /users/{user_id}/first_level — Комментарии первого уровня](#get-usersuser_idfirst_level--Комментарии-первого-уровня)
-* [GET /users/{user_id}/descendants — Все комментарии](#get-usersuser_iddescendants--Все-комментарии)
+* [GET /users/{user_id}/first_level — Комментарии первого уровня к пользователю](#get-usersuser_idfirst_level--Комментарии-первого-уровня-к-пользователю)
+* [GET /users/{user_id}/descendants — Все комментарии к пользователю](#get-usersuser_iddescendants--Все-комментарии-к-пользователю)
+* [GET /users/{user_id}/comments — Все комментарии этого пользователя](#get-usersuser_iddescendants--Все-комментарии-этого-пользователя)
 
 ## GET /users/ — Показать всех Пользователей
 **Аргументы**: Нет  
@@ -117,11 +118,11 @@ curl -X PUT http://HOSTNAME/api/1.0/users/346 \
 curl -X DELETE http://HOSTNAME/api/1.0/users/340
 ```
 
-## GET /users/{user_id}/first_level — Комментарии первого уровня
+## GET /users/{user_id}/first_level — Комментарии первого уровня к пользователю
 **Аргументы**: 
 - *user_id* (int) Идентификатор пользователя
 
-**Возвращает**: Список Комментариев первого уровня вложенности
+**Возвращает**: Список Комментариев первого уровня вложенности в порядке возрастания даты создания комментария.
 
 Поддерживается [пагинация](./OPTIONS.md#Пагинация).
 
@@ -157,7 +158,7 @@ curl -X GET http://HOSTNAME/api/1.0/users/428935/first_level
 }
 ```
 
-## GET /users/{user_id}/descendants — Все комментарии
+## GET /users/{user_id}/descendants — Все комментарии к пользователю
 
 **Аргументы**: 
 - *user_id* (int) Идентификатор пользователя
@@ -190,6 +191,49 @@ curl -X GET http://HOSTNAME/api/1.0/users/320231/descendants \
   "text": "Свой синтаксис и некоторые концепции Erlang унаследовал от языка логического …",
   "datetime": 1497973919,
   "parentid": 321089
+}
+]
+```
+
+## GET /users/{user_id}/comments — Все комментарии этого пользователя
+
+**Аргументы**: 
+- *user_id* (int) Идентификатор пользователя
+
+**Возвращает**: Список всех комментариев пользователя в JSON-стриме
+
+**Пример запроса**:
+```bash
+curl -X GET http://HOSTNAME/api/1.0/users/323/comments \
+  -H 'Connection: Keep-Alive'
+```
+**Пример ответа**:
+```json
+[
+{
+  "text": "Разработан и поддерживается компанией …",
+  "deleted": true,
+  "entityid": 533211,
+  "commentid": 532063,
+  "datetime": "2017-06-24T22:41:59.345903+03:00",
+  "author": {
+    "userid": 323,
+    "name": "Биргит Кудряшова"
+  },
+  "parentid": 324943
+}
+,
+{
+  "text": "REPL — форма организации простой интерактивной среды программирования …",
+  "deleted": false,
+  "entityid": 533244,
+  "commentid": 532076,
+  "datetime": "2017-06-24T22:47:39.401553+03:00",
+  "author": {
+    "userid": 323,
+    "name": "Биргит Кудряшова"
+  },
+  "parentid": 324930
 }
 ]
 ```

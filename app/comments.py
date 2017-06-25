@@ -168,7 +168,8 @@ def update_comment(conn, comment_id: int, data: Dict[str, Any]) -> int:
 
 def first_level_comments(conn, comment_id: int, offset: int = 0, limit: int = 100) -> Tuple[int, List[Dict[str, Any]]]:
     """
-    Показать комментарии первого уровня вложенности к указанному комментарию.
+    Показать комментарии первого уровня вложенности к указанному комментарию в порядке возрастания даты создания
+    комментария.
 
     Поддерживается пагинация :func:`app.common.pagination`.
 

@@ -5,9 +5,9 @@ import flask
 from flask import Blueprint, Response, stream_with_context
 
 from app.blueprints.doc import auto
-from app.common import db_conn, resp, affected_num_to_code, pagination, DatabaseException, to_json
+from app.common import db_conn, resp, affected_num_to_code, pagination, DatabaseException, to_json_stream
 from app.users import get_users, get_user, User, remove_user, new_user, update_user, first_level_comments, \
-    descendant_comments
+    descendant_comments, comments as user_comments
 
 users = Blueprint('users', __name__)
 
@@ -121,7 +121,8 @@ def delete_user(user_id: int):
 @auto.doc(groups=['users'])
 def get_first_level_comments(user_id: int):
     """
-    Показать комментарии первого уровня вложенности к указанному пользователю.
+    Показать комментарии первого уровня вложенности к указанному пользователю в порядке возрастания даты создания
+    комментария.
 
     Поддерживается пагинация :func:`app.common.pagination`.
 
@@ -147,17 +148,18 @@ def get_descendants(user_id: int):
     :param user_id: Идентификатор пользователя
     :return: Список всех комментариев к пользователю в JSON-стриме
     """
+    return Response(stream_with_context(to_json_stream(descendant_comments(db_conn(), user_id))),
+                    mimetype='application/json; encoding="urf-8"')
 
-    def _generate(conn, cid):
-        yield "[\n"
-        first = True
-        for rec in descendant_comments(conn, cid):
-            msg = to_json(rec)
-            if not first:
-                msg = ',\n' + msg
-            yield msg
-            first = False
-        yield "]\n"
 
-    return Response(stream_with_context(_generate(db_conn(), user_id)),
+@users.route('/users/<int:user_id>/comments', methods=['GET'])
+@auto.doc(groups=['users'])
+def comments(user_id: int):
+    """
+    Получение всех комментариев указанного пользователя.
+
+    :param user_id: Идентификатор пользователя
+    :return: Список всех комментариев пользователя в JSON-стриме
+    """
+    return Response(stream_with_context(to_json_stream(user_comments(db_conn(), user_id))),
                     mimetype='application/json; encoding="urf-8"')

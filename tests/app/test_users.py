@@ -3,7 +3,7 @@ import random
 from elizabeth import Generic
 from flaky import flaky
 
-from app.users import get_users, get_user, new_user, remove_user, update_user, descendant_comments
+from app.users import get_users, get_user, new_user, remove_user, update_user, descendant_comments, comments
 
 g = Generic('ru')
 
@@ -117,3 +117,16 @@ def test_descendants(conn):
         i += 1
         if i > 10:
             break
+
+
+@flaky(max_runs=10, min_passes=1)
+def test_comments(conn):
+    user = random.choice(get_users(conn)[1])
+    i = 0
+    for rec in comments(conn, user['userid']):
+        assert isinstance(rec, dict)
+        assert len(rec) == 7
+        i += 1
+        if i > 10:
+            break
+    assert i > 0

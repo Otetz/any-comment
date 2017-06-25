@@ -5,7 +5,7 @@ import flask
 from flask import Blueprint, Response, stream_with_context
 
 from app.blueprints.doc import auto
-from app.common import db_conn, resp, affected_num_to_code, pagination, DatabaseException, to_json
+from app.common import db_conn, resp, affected_num_to_code, pagination, DatabaseException, to_json_stream
 from app.posts import get_posts, get_post, Post, remove_post, new_post, update_post, first_level_comments, \
     descendant_comments
 
@@ -131,7 +131,8 @@ def delete_post(post_id: int):
 @auto.doc(groups=['posts'])
 def get_first_level_comments(post_id: int):
     """
-    Показать комментарии первого уровня вложенности к указанному посту.
+    Показать комментарии первого уровня вложенности к указанному посту в порядке возрастания даты создания
+    комментария.
 
     Поддерживается пагинация :func:`app.common.pagination`.
 

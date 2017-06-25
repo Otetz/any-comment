@@ -46,6 +46,18 @@ def to_json(data: Dict[str, Any]) -> str:
     return json.dumps(data, cls=DateTimeEncoder, **json_kwargs()) + "\n"
 
 
+def to_json_stream(it: Iterator) -> Iterator:
+    yield "[\n"
+    first = True
+    for rec in it:
+        msg = to_json(rec)
+        if not first:
+            msg = ',\n' + msg
+        yield msg
+        first = False
+    yield "]\n"
+
+
 def resp(code, data: Dict[str, Any]):
     return flask.Response(status=code, mimetype="application/json; encoding=utf-8", response=to_json(data))
 
@@ -78,7 +90,8 @@ def pagination() -> (int, int):
 def entity_first_level_comments(conn, entityid: int, offset: int = 0, limit: int = 100) -> \
         Tuple[int, List[Dict[str, Any]]]:
     """
-    Показать комментарии первого уровня вложенности к указанной сущности.
+    Показать комментарии первого уровня вложенности к указанной сущности в порядке возрастания даты создания
+    комментария.
 
     Поддерживается пагинация :func:`app.common.pagination`.
 
@@ -95,8 +108,9 @@ def entity_first_level_comments(conn, entityid: int, offset: int = 0, limit: int
     cur.execute("SET timezone = 'Europe/Moscow';")
     cur.execute("SELECT C.entityid, C.commentid, C.userid, C.datetime, C.parentid, C.text, C.deleted, U.name "
                 "FROM comments AS C "
-                "LEFT JOIN users AS U ON U.userid = C.userid "    
+                "LEFT JOIN users AS U ON U.userid = C.userid "
                 "WHERE parentid = %s AND deleted = %s "
+                "ORDER BY C.datetime ASC "
                 "LIMIT %s OFFSET %s;", [entityid, False, limit, offset])
     comments = []
     for rec in cur.fetchall():

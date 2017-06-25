@@ -10,7 +10,7 @@ from flask import Blueprint, stream_with_context, Response, redirect, url_for
 from app.blueprints.doc import auto
 from app.comments import get_comments, get_comment, remove_comment, new_comment, update_comment, first_level_comments, \
     descendants
-from app.common import db_conn, resp, affected_num_to_code, pagination, DatabaseException, to_json
+from app.common import db_conn, resp, affected_num_to_code, pagination, DatabaseException, to_json_stream
 from app.types import Comment
 
 comments = Blueprint('comments', __name__)
@@ -95,7 +95,6 @@ def comment(comment_id: int):
     if record is None:
         errors = [{'error': 'Комментарий не найден', 'comment_id': comment_id}]
         return resp(404, {'errors': errors})
-    record['datetime'] = record['datetime'].isoformat()
     return resp(200, {'response': record})
 
 
@@ -150,7 +149,8 @@ def delete_comment(comment_id: int):
 @auto.doc(groups=['comments'])
 def get_first_level_comments(comment_id: int):
     """
-    Показать комментарии первого уровня вложенности к указанному комментарию.
+    Показать комментарии первого уровня вложенности к указанному комментарию в порядке возрастания даты создания
+    комментария.
 
     Поддерживается пагинация :func:`app.common.pagination`.
 
@@ -164,8 +164,6 @@ def get_first_level_comments(comment_id: int):
 
     offset, per_page = pagination()
     total, records = first_level_comments(db_conn(), comment_id, offset=offset, limit=per_page)
-    for rec in records:
-        rec['datetime'] = rec['datetime'].isoformat()
     return resp(200, {'response': records, 'total': total, 'pages': int(total / per_page) + 1})
 
 
@@ -178,18 +176,5 @@ def get_descendants(comment_id: int):
     :param comment_id: Идентификатор родительского комментария
     :return: Список всех дочерних комментариев в JSON-стриме
     """
-
-    def _generate(conn, cid):
-        yield "[\n"
-        first = True
-        for rec in descendants(conn, cid):
-            rec['datetime'] = rec['datetime'].isoformat()
-            msg = to_json(rec)
-            if not first:
-                msg = ',\n' + msg
-            yield msg
-            first = False
-        yield "]\n"
-
-    return Response(stream_with_context(_generate(db_conn(), comment_id)),
+    return Response(stream_with_context(to_json_stream(descendants(db_conn(), comment_id))),
                     mimetype='application/json; encoding="urf-8"')

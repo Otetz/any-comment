@@ -111,3 +111,4 @@ def test_descendants(conn):
         i += 1
         if i > 10:
             break
+    assert i > 0
