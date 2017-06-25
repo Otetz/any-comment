@@ -19,7 +19,7 @@ def test_pagination(conn):
     assert users2[-1] == users[9]
 
 
-@flaky
+@flaky(max_runs=10, min_passes=1)
 def test_first_level_comments(conn):
     posts = get_posts(conn)[1]
     comments = []

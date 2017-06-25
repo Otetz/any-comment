@@ -109,7 +109,7 @@ def test_get_descendants(app, client):
 
 
 @flaky(max_runs=10, min_passes=1)
-def test_get_descendants(app, client):
+def test_get_comments(app, client):
     with app.app_context():
         user = random.choice(get_users(db_conn())[1])
         res = client.get(url_for('users.comments', user_id=user['userid']))
