@@ -5,7 +5,8 @@ import flask
 from flask import Blueprint, Response, stream_with_context
 
 from app.blueprints.doc import auto
-from app.common import db_conn, resp, affected_num_to_code, pagination, DatabaseException, to_json_stream
+from app.common import db_conn, resp, affected_num_to_code, pagination, DatabaseException, to_json_stream, \
+    AttachmentManager, date_filter
 from app.posts import get_posts, get_post, Post, remove_post, new_post, update_post, first_level_comments, \
     descendant_comments
 
@@ -149,14 +150,33 @@ def get_first_level_comments(post_id: int):
     return resp(200, {'response': records, 'total': total, 'pages': int(total / per_page) + 1})
 
 
-@posts.route('/posts/<int:post_id>/descendants', methods=['GET'])
+@posts.route('/posts/<int:post_id>/descendants', methods=['GET'], defaults={'fmt': None})
+@posts.route('/posts/<int:post_id>/descendants.<string:fmt>', methods=['GET'])
 @auto.doc(groups=['posts'])
-def get_descendants(post_id: int):
+def get_descendants(post_id: int, fmt: str):
     """
     Получение всех комментариев для указанного поста.
 
+    Поддерживается фильтрация по дате создания комментария :func:`app.common.date_filter`.
+
     :param post_id: Идентификатор поста
-    :return: Список всех комментариев к посту в JSON-стриме
+    :param fmt: Формат выдачи в виде "расширения" имени файла. При отсутствии — выдача JSON-стрима в теле ответа. \
+        Возможные значения: *json*, *csv*, *xml*
+    :return: Список всех комментариев к посту в JSON-стриме либо в стриме скачивания файла заданного формата
     """
-    return Response(stream_with_context(to_json_stream(descendant_comments(db_conn(), post_id))),
-                    mimetype='application/json; encoding="urf-8"')
+    after, before, errors = date_filter()
+    if errors:
+        return resp(404, {'errors': errors})
+
+    if not fmt:
+        return Response(stream_with_context(to_json_stream(descendant_comments(db_conn(), post_id, after, before))),
+                        mimetype='application/json; charset="utf-8"')
+    try:
+        formatter = AttachmentManager(fmt.lower())
+    except NotImplemented:
+        return resp(400, {'error': 'Указан не поддерживаемый формат файла', 'fmt': fmt})
+
+    return Response(stream_with_context(formatter.iterate(descendant_comments(db_conn(), post_id, after, before))),
+                    mimetype=formatter.content_type,
+                    headers={"Content-Disposition": "attachment; filename=post%d_descendants.%s" % (
+                        post_id, fmt.lower())})

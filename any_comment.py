@@ -13,11 +13,12 @@ def create_app():
     app.register_blueprint(users, url_prefix=app.config['PREFIX'])
     app.register_blueprint(posts, url_prefix=app.config['PREFIX'])
     app.register_blueprint(comments, url_prefix=app.config['PREFIX'])
-    app.register_blueprint(doc)
+    if app.config.get('DEVELOPMENT', False):
+        app.register_blueprint(doc)
 
     return app
 
 
 if __name__ == '__main__':
-    app = create_app()
-    app.run()
+    service = create_app()
+    service.run()

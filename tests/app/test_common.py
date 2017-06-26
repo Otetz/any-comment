@@ -62,7 +62,7 @@ def test_first_level_comments(conn):
         assert c['parentid'] == comment['entityid']
 
 
-@flaky(max_runs=10, min_passes=1)
+@flaky(max_runs=20, min_passes=1)
 def test_entity_descendants(conn):
     posts = get_posts(conn)[1]
     post = random.choice(posts)

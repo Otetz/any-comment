@@ -1,8 +1,11 @@
+import csv
 import datetime
 import random
+from io import StringIO
 from urllib.parse import urlparse
 
 import dateutil.parser
+import xmltodict
 from dateutil.tz import tzlocal
 from elizabeth import Generic
 from flaky import flaky
@@ -38,22 +41,26 @@ def test_get_one(app, client):
         assert res is not None
         assert res.json is not None
         assert 'response' in res.json
-        assert res.json['response'] is not None
-        assert isinstance(res.json['response'], dict)
-        assert len(res.json['response']) == 7
-        for name in ['entityid', 'commentid'] + Comment.data_fields:
-            if name == 'userid':
-                continue
-            assert name in res.json['response']
-        assert isinstance(res.json['response']['author'], dict)
-        assert len(res.json['response']['author']) == 2
-        assert 'userid' in res.json['response']['author']
-        assert isinstance(res.json['response']['author']['userid'], int)
-        assert res.json['response']['author']['userid'] > 0
-        assert 'name' in res.json['response']['author']
-        assert isinstance(res.json['response']['author']['name'], str)
-        assert res.json['response']['author']['name'] != ''
-        assert dateutil.parser.parse(res.json['response']['datetime'])
+        check_record(res.json['response'])
+
+
+def check_record(record):
+    assert record is not None
+    assert isinstance(record, dict)
+    assert len(record) == 7
+    for name in ['entityid', 'commentid'] + Comment.data_fields:
+        if name == 'userid':
+            continue
+        assert name in record
+    assert isinstance(record['author'], dict)
+    assert len(record['author']) == 2
+    assert 'userid' in record['author']
+    assert isinstance(record['author']['userid'], int)
+    assert record['author']['userid'] > 0
+    assert 'name' in record['author']
+    assert isinstance(record['author']['name'], str)
+    assert record['author']['name'] != ''
+    assert dateutil.parser.parse(record['datetime'])
 
 
 def test_put(app, client):
@@ -134,3 +141,70 @@ def test_get_descendants(app, client):
         assert res.status_code == 200
         assert res.json is not None
         assert len(res.json) >= 1
+        check_record(random.choice(res.json))
+
+
+@flaky(max_runs=10, min_passes=1)
+def test_get_descendants_attach_json(app, client):
+    with app.app_context():
+        comment = random.choice(get_comments(db_conn())[1])
+        res = client.get(url_for('comments.get_descendants', comment_id=comment['commentid'], fmt='json'))
+        assert res is not None
+        assert res.status_code == 200
+        assert res.json is not None
+        assert len(res.json) >= 1
+        check_record(random.choice(res.json))
+
+
+def parse_csv_comment(rec):
+    if 'author_userid' not in rec or 'author_name' not in rec:
+        return rec
+    rec['author'] = {'userid': rec['author_userid'], 'name': rec['author_name']}
+    for n in ['author_userid', 'author_name']:
+        del rec[n]
+    return parse_comment_types(rec)
+
+
+@flaky(max_runs=10, min_passes=1)
+def test_get_descendants_attach_csv(app, client):
+    with app.app_context():
+        comment = random.choice(get_comments(db_conn())[1])
+        res = client.get(url_for('comments.get_descendants', comment_id=comment['commentid'], fmt='csv'))
+        assert res is not None
+        assert res.status_code == 200
+        assert res.data is not None
+        records = []
+        with StringIO(str(res.data, encoding='windows-1251')) as f:
+            reader = csv.DictReader(f, delimiter=";")
+            for row in reader:
+                records.append(row)
+        assert len(records) >= 1
+        check_record(parse_csv_comment(random.choice(records)))
+
+
+def parse_comment_types(rec):
+    rec['author']['userid'] = int(rec['author']['userid'])
+    for n in ['entityid', 'commentid', 'parentid']:
+        rec[n] = int(rec[n])
+    for n in ['deleted']:
+        rec[n] = bool(rec[n])
+    return rec
+
+
+def parse_xml_comment(rec):
+    rec['author'] = dict(rec['author'])
+    return parse_comment_types(rec)
+
+
+@flaky(max_runs=10, min_passes=1)
+def test_get_descendants_attach_xml(app, client):
+    with app.app_context():
+        comment = random.choice(get_comments(db_conn())[1])
+        res = client.get(url_for('comments.get_descendants', comment_id=comment['commentid'], fmt='xml'))
+        assert res is not None
+        assert res.status_code == 200
+        assert res.data is not None
+        xml_resp = dict(xmltodict.parse(str(res.data, encoding='utf-8')))
+        assert len(xml_resp['response']['record']) >= 1
+        xml_rec = dict(random.choice(list(xml_resp['response']['record'])))
+        check_record(parse_xml_comment(xml_rec))

@@ -1,9 +1,10 @@
+import datetime
 from typing import List, Dict, Any, Optional, Tuple, Iterator
 
 import psycopg2
 from psycopg2.extras import RealDictCursor
 
-from app.common import DatabaseException, entity_first_level_comments, entity_descendants
+from app.common import DatabaseException, entity_first_level_comments, entity_descendants, sql_date_filter
 from app.types import User
 
 
@@ -128,33 +129,43 @@ def first_level_comments(conn, user_id: int, offset: int = 0, limit: int = 100) 
     return entity_first_level_comments(conn, user['entityid'], offset, limit)
 
 
-def descendant_comments(conn, user_id: int) -> Iterator:
+def descendant_comments(conn, user_id: int, after: Optional[datetime.datetime] = None,
+                        before: Optional[datetime.datetime] = None) -> Iterator:
     """
     Все комментарии для указанного пользователя.
 
     :param conn: Psycopg2 соединение
     :param user_id: Идентификатор пользователя
+    :param datetime after: Опциональная фильтрация по дате *после* указанной
+    :param datetime before: Опциональная фильтрация по дате *до* указанной
     :return: Итератор всех комментариев к пользователю
     :rtype: iterator
     """
     user = get_user(conn, user_id)
     if user is None:
         raise StopIteration
-    return entity_descendants(conn, user['entityid'])
+    return entity_descendants(conn, user['entityid'], after, before)
 
 
-def comments(conn, user_id: int, batch_size: int = 50) -> Iterator:
+def comments(conn, user_id: int, after: Optional[datetime.datetime] = None,
+             before: Optional[datetime.datetime] = None, batch_size: int = 50) -> Iterator:
     user = get_user(conn, user_id)
     if user is None:
         raise StopIteration
 
+    dtf_clause, dtf_values = sql_date_filter(after, before, 'C')
+
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     cur.itersize = batch_size
     cur.execute("SET timezone = 'Europe/Moscow';")
-    cur.execute("SELECT C.entityid, C.commentid, C.datetime, C.parentid, C.text, C.deleted "
-                "FROM comments AS C "
-                "WHERE C.userid = %s "
-                "ORDER BY C.datetime ASC;", [user_id])
+    query = "SELECT C.entityid, C.commentid, C.datetime, C.parentid, C.text, C.deleted " \
+            "FROM comments AS C " \
+            "WHERE C.userid = %s "
+    if dtf_clause:
+        query += ' AND ' + dtf_clause
+    query += " ORDER BY C.datetime ASC;"
+    # noinspection PyTypeChecker
+    cur.execute(query, [user_id] + dtf_values)
     for rec in cur:
         rec['author'] = {'userid': user['userid'], 'name': user['name']}
         yield rec

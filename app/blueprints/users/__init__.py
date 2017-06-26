@@ -5,7 +5,8 @@ import flask
 from flask import Blueprint, Response, stream_with_context
 
 from app.blueprints.doc import auto
-from app.common import db_conn, resp, affected_num_to_code, pagination, DatabaseException, to_json_stream
+from app.common import db_conn, resp, affected_num_to_code, pagination, DatabaseException, to_json_stream, \
+    AttachmentManager, date_filter
 from app.users import get_users, get_user, User, remove_user, new_user, update_user, first_level_comments, \
     descendant_comments, comments as user_comments
 
@@ -139,27 +140,64 @@ def get_first_level_comments(user_id: int):
     return resp(200, {'response': records, 'total': total, 'pages': int(total / per_page) + 1})
 
 
-@users.route('/users/<int:user_id>/descendants', methods=['GET'])
+@users.route('/users/<int:user_id>/descendants', methods=['GET'], defaults={'fmt': None})
+@users.route('/users/<int:user_id>/descendants.<string:fmt>', methods=['GET'])
 @auto.doc(groups=['users'])
-def get_descendants(user_id: int):
+def get_descendants(user_id: int, fmt: str):
     """
     Получение всех комментариев для указанного пользователя.
 
+    Поддерживается фильтрация по дате создания комментария :func:`app.common.date_filter`.
+
     :param user_id: Идентификатор пользователя
-    :return: Список всех комментариев к пользователю в JSON-стриме
+    :param fmt: Формат выдачи в виде "расширения" имени файла. При отсутствии — выдача JSON-стрима в теле ответа. \
+        Возможные значения: *json*, *csv*, *xml*
+    :return: Список всех комментариев к пользователю в JSON-стриме либо в стриме скачивания файла заданного формата
     """
-    return Response(stream_with_context(to_json_stream(descendant_comments(db_conn(), user_id))),
-                    mimetype='application/json; encoding="urf-8"')
+    after, before, errors = date_filter()
+    if errors:
+        return resp(404, {'errors': errors})
+
+    if not fmt:
+        return Response(stream_with_context(to_json_stream(descendant_comments(db_conn(), user_id, after, before))),
+                        mimetype='application/json; charset="utf-8"')
+    try:
+        formatter = AttachmentManager(fmt.lower())
+    except NotImplemented:
+        return resp(400, {'error': 'Указан не поддерживаемый формат файла', 'fmt': fmt})
+
+    return Response(stream_with_context(formatter.iterate(descendant_comments(db_conn(), user_id, after, before))),
+                    mimetype=formatter.content_type,
+                    headers={"Content-Disposition": "attachment; filename=user%d_descendants.%s" % (
+                        user_id, fmt.lower())})
 
 
-@users.route('/users/<int:user_id>/comments', methods=['GET'])
+@users.route('/users/<int:user_id>/comments', methods=['GET'], defaults={'fmt': None})
+@users.route('/users/<int:user_id>/comments.<string:fmt>', methods=['GET'])
 @auto.doc(groups=['users'])
-def comments(user_id: int):
+def comments(user_id: int, fmt: str):
     """
     Получение всех комментариев указанного пользователя.
 
+    Поддерживается фильтрация по дате создания комментария :func:`app.common.date_filter`.
+
     :param user_id: Идентификатор пользователя
-    :return: Список всех комментариев пользователя в JSON-стриме
+    :param fmt: Формат выдачи в виде "расширения" имени файла. При отсутствии — выдача JSON-стрима в теле ответа. \
+        Возможные значения: *json*, *csv*, *xml*
+    :return: Список всех комментариев пользователя в JSON-стриме либо в стриме скачивания файла заданного формата
     """
-    return Response(stream_with_context(to_json_stream(user_comments(db_conn(), user_id))),
-                    mimetype='application/json; encoding="urf-8"')
+    after, before, errors = date_filter()
+    if errors:
+        return resp(404, {'errors': errors})
+
+    if not fmt:
+        return Response(stream_with_context(to_json_stream(user_comments(db_conn(), user_id, after, before))),
+                        mimetype='application/json; charset="utf-8"')
+    try:
+        formatter = AttachmentManager(fmt.lower())
+    except NotImplemented:
+        return resp(400, {'error': 'Указан не поддерживаемый формат файла', 'fmt': fmt})
+
+    return Response(stream_with_context(formatter.iterate(user_comments(db_conn(), user_id, after, before))),
+                    mimetype=formatter.content_type,
+                    headers={"Content-Disposition": "attachment; filename=user%d_comments.%s" % (user_id, fmt.lower())})

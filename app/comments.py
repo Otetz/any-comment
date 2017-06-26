@@ -186,16 +186,19 @@ def first_level_comments(conn, comment_id: int, offset: int = 0, limit: int = 10
     return entity_first_level_comments(conn, comment['entityid'], offset, limit)
 
 
-def descendants(conn, comment_id: int) -> Iterator:
+def descendants(conn, comment_id: int, after: Optional[datetime.datetime] = None,
+                before: Optional[datetime.datetime] = None) -> Iterator:
     """
     Все дочерние комментарии для указанного родительского.
 
     :param conn: Psycopg2 соединение
-    :param comment_id: Идентификатор родительского комментария
+    :param int comment_id: Идентификатор родительского комментария
+    :param datetime after: Опциональная фильтрация по дате *после* указанной
+    :param datetime before: Опциональная фильтрация по дате *до* указанной
     :return: Итератор всех дочерних комментариев
     :rtype: iterator
     """
     comment = get_comment(conn, comment_id)
     if comment is None:
         raise StopIteration
-    return entity_descendants(conn, comment['entityid'])
+    return entity_descendants(conn, comment['entityid'], after, before)

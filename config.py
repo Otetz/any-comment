@@ -18,6 +18,7 @@ class Config(object):
     PREFIX = '/api/1.0'
     JSON_ENSURE_ASCII = False
     JSON_INDENT = 0
+    XML2DICT_PRETTY = False
 
 
 class ProductionConfig(Config):
@@ -28,6 +29,7 @@ class DevelopmentConfig(Config):
     DEVELOPMENT = True
     DEBUG = True
     JSON_INDENT = 2
+    XML2DICT_PRETTY = True
 
 
 class TestingConfig(Config):

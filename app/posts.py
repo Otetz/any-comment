@@ -1,3 +1,4 @@
+import datetime
 from typing import List, Dict, Any, Optional, Tuple, Iterator
 
 import psycopg2
@@ -135,16 +136,19 @@ def first_level_comments(conn, post_id: int, offset: int = 0, limit: int = 100) 
     return entity_first_level_comments(conn, post['entityid'], offset, limit)
 
 
-def descendant_comments(conn, post_id: int) -> Iterator:
+def descendant_comments(conn, post_id: int, after: Optional[datetime.datetime] = None,
+                        before: Optional[datetime.datetime] = None) -> Iterator:
     """
     Все комментарии для указанного поста.
 
     :param conn: Psycopg2 соединение
     :param post_id: Идентификатор поста
+    :param datetime after: Опциональная фильтрация по дате *после* указанной
+    :param datetime before: Опциональная фильтрация по дате *до* указанной
     :return: Итератор всех комментариев к посту
     :rtype: iterator
     """
     post = get_post(conn, post_id)
     if post is None:
         raise StopIteration
-    return entity_descendants(conn, post['entityid'])
+    return entity_descendants(conn, post['entityid'], after, before)
