@@ -8,7 +8,7 @@ root = Blueprint('root', __name__)
 
 @root.route('/')
 def start():
-    if current_app.config['DEVELOPMENT']:
+    if current_app.config.get('DEVELOPMENT', False):
         return flask.redirect('/doc')
     else:
-        resp(404, {})
+        return resp(400, {})
