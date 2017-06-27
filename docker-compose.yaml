@@ -6,5 +6,12 @@ services:
     - 5432:5432
     volumes:
     - datavolume:/var/lib/postgresql/data
+  pubsub:
+    image: redis:3.2.9-alpine
+    ports:
+    - 6380:6379
+    volumes:
+    - pubsubvolume:/data
 volumes:
   datavolume: {}
+  pubsubvolume: {}

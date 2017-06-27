@@ -5,7 +5,7 @@ import psycopg2
 from dateutil.tz import tzlocal
 from psycopg2.extras import RealDictCursor
 
-from app.common import DatabaseException, entity_first_level_comments, entity_descendants
+from app.common import DatabaseException, entity_first_level_comments, entity_descendants, redis_publish, redis_conn
 from app.types import Comment
 
 
@@ -66,7 +66,7 @@ def get_comment(conn, comment_id: int) -> Optional[Dict[str, Any]]:
     return rec
 
 
-def new_comment(conn, data) -> Tuple[int, int]:
+def new_comment(conn, data, redis=None) -> Tuple[int, int]:
     """
     Сохранение нового *Комментария* (:class:`app.comments.Comment`).
 
@@ -76,6 +76,7 @@ def new_comment(conn, data) -> Tuple[int, int]:
 
     :param conn: Psycopg2 соединение
     :param dict data: Данные о комментарии
+    :param redis: Опциональное Redis-соединение, если вызывается вне приложения
     :return: Комментарий (словарь всех полей)
     :rtype: dict
     """
@@ -93,10 +94,20 @@ def new_comment(conn, data) -> Tuple[int, int]:
         cur.close()
     except psycopg2.DatabaseError as e:
         raise DatabaseException(e)
+
+    # Поддержка Server-Sent Events
+    channel = 'first_level_changed:%d' % data['parentid']
+    message = {
+        'action': 'new_comment',
+        'now': datetime.datetime.now(tz=tzlocal()).isoformat(),
+        'record': {'comment_id': comment_id, 'entity_id': entity_id},
+    }
+    redis_publish(redis or redis_conn(), channel, message)
+
     return comment_id, entity_id
 
 
-def remove_comment(conn, comment_id: int) -> Optional[int]:
+def remove_comment(conn, comment_id: int, redis=None) -> Optional[int]:
     """
     Удаление *Комментария* (:class:`app.comments.Comment`).
 
@@ -104,6 +115,7 @@ def remove_comment(conn, comment_id: int) -> Optional[int]:
 
     :param conn: Psycopg2 соединение
     :param int comment_id: Идентификатор комментария
+    :param redis: Опциональное Redis-соединение, если вызывается вне приложения
     :return: Количество удалённых записей либо None если удаление не удалось (имеются родители)
     :rtype: int
     """
@@ -127,10 +139,21 @@ def remove_comment(conn, comment_id: int) -> Optional[int]:
         cnt = update_comment(conn, comment_id, data=data)
     except psycopg2.DatabaseError as e:
         raise DatabaseException(e)
+
+    # Поддержка Server-Sent Events
+    if cnt == 1:
+        channel = 'first_level_changed:%d' % comment['parentid']
+        message = {
+            'action': 'delete_comment',
+            'now': datetime.datetime.now(tz=tzlocal()).isoformat(),
+            'old_record': comment
+        }
+        redis_publish(redis or redis_conn(), channel, message)
+
     return cnt
 
 
-def update_comment(conn, comment_id: int, data: Dict[str, Any]) -> int:
+def update_comment(conn, comment_id: int, data: Dict[str, Any], redis=None) -> int:
     """
     Обновление информации о *Комментарии* (:class:`app.comments.Comment`).
 
@@ -139,6 +162,7 @@ def update_comment(conn, comment_id: int, data: Dict[str, Any]) -> int:
     :param conn: Psycopg2 соединение
     :param int comment_id: Идентификатор комментария
     :param dict data: Данные о Комментарии
+    :param redis: Опциональное Redis-соединение, если вызывается вне приложения
     :return: Количество обновлённых записей
     :rtype: int
     """
@@ -163,6 +187,18 @@ def update_comment(conn, comment_id: int, data: Dict[str, Any]) -> int:
         cur.close()
     except psycopg2.DatabaseError as e:
         raise DatabaseException(e)
+
+    # Поддержка Server-Sent Events
+    if cnt == 1:
+        channel = 'first_level_changed:%d' % comment['parentid']
+        message = {
+            'action': 'update_comment',
+            'now': datetime.datetime.now(tz=tzlocal()).isoformat(),
+            'record': data,
+            'old_record': comment
+        }
+        redis_publish(redis or redis_conn(), channel, message)
+
     return cnt
 
 

@@ -15,6 +15,13 @@ class Config(object):
         password=os.environ.get('DB_PASSWORD', None),
         dbname=os.environ.get('DB_NAME', 'postgres')
     )
+    REDIS_URI = "redis://{auth}{host}:{port}/{db}".format(
+        auth=os.environ.get('REDIS_PASSWORD', False) and "{user}:{password}@".format(
+            user=os.environ.get('REDIS_USER', ''), password=os.environ['REDIS_PASSWORD']) or '',
+        host=os.environ.get('REDIS_HOST', 'localhost'),
+        port=os.environ.get('REDIS_PORT', 6379),
+        db=os.environ.get('REDIS_DB', 0),
+    )
     PREFIX = '/api/1.0'
     JSON_ENSURE_ASCII = False
     JSON_INDENT = 0

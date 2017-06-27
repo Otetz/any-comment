@@ -61,12 +61,12 @@ def test_get_comment_error(conn):
     assert comment is None
 
 
-def test_new_comment(conn):
+def test_new_comment(conn, r_conn):
     userid = random.choice(get_users(conn)[1])['userid']
     parentid = random.choice(get_comments(conn)[1])['entityid']
     text = g.text.text(quantity=random.randrange(1, 3))
     dt = datetime.datetime.now(tz=tzlocal())
-    comment_id = new_comment(conn, {'userid': userid, 'parentid': parentid, 'text': text})[0]
+    comment_id = new_comment(conn, {'userid': userid, 'parentid': parentid, 'text': text}, redis=r_conn)[0]
     comment = get_comment(conn, comment_id)
     assert comment is not None
     assert isinstance(comment, dict)
@@ -79,17 +79,17 @@ def test_new_comment(conn):
     assert comment2['text'] == text
     assert comment2['deleted'] is False
     assert (comment2['datetime'] - dt).seconds < 1
-    remove_comment(conn, comment['commentid'])
+    remove_comment(conn, comment['commentid'], r_conn)
 
 
-def test_remove_comment(conn):
+def test_remove_comment(conn, r_conn):
     userid = random.choice(get_users(conn)[1])['userid']
     parentid = random.choice(get_comments(conn)[1])['entityid']
     text = g.text.text(quantity=random.randrange(1, 3))
-    comment1_id = new_comment(conn, {'userid': userid, 'parentid': parentid, 'text': text})[0]
+    comment1_id = new_comment(conn, {'userid': userid, 'parentid': parentid, 'text': text}, r_conn)[0]
     comment1 = get_comment(conn, comment1_id)
     assert comment1 is not None
-    cnt = remove_comment(conn, comment1_id)
+    cnt = remove_comment(conn, comment1_id, r_conn)
     assert cnt == 1
     comment3 = get_comment(conn, comment1_id)
     assert comment3 is not None
@@ -101,18 +101,18 @@ def test_remove_wrong_comment(conn):
     assert cnt == 0
 
 
-def test_update_comment(conn):
+def test_update_comment(conn, r_conn):
     userid = random.choice(get_users(conn)[1])['userid']
     parentid = random.choice(get_comments(conn)[1])['entityid']
     text2 = text1 = g.text.text(quantity=random.randrange(1, 3))
-    comment1_id = new_comment(conn, {'userid': userid, 'parentid': parentid, 'text': text1})[0]
+    comment1_id = new_comment(conn, {'userid': userid, 'parentid': parentid, 'text': text1}, r_conn)[0]
     assert comment1_id is not None
     comment2 = get_comment(conn, comment1_id)
     assert comment2 is not None
     assert comment2['text'] == text1
     while text2 == text1:
         text2 = g.text.text(quantity=random.randrange(1, 3))
-    res = update_comment(conn, comment1_id, {'text': text2})
+    res = update_comment(conn, comment1_id, {'text': text2}, r_conn)
     assert res is not None
     assert res == 1
     comment3 = get_comment(conn, comment2['commentid'])
@@ -125,7 +125,7 @@ def test_update_comment(conn):
     assert comment3['deleted'] == comment2['deleted']
     assert comment3['text'] != comment2['text']
     assert comment3['text'] == text2
-    remove_comment(conn, comment2['commentid'])
+    remove_comment(conn, comment2['commentid'], r_conn)
 
 
 @flaky(max_runs=10, min_passes=1)

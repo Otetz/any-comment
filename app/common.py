@@ -8,6 +8,7 @@ from typing import Dict, Any, Tuple, List, Iterator, Optional
 import dateutil.parser
 import flask
 import psycopg2
+import redis as redis
 import xmltodict
 from flask import current_app as app, request
 from psycopg2.extras import RealDictCursor
@@ -38,6 +39,14 @@ class DateTimeEncoder(json.JSONEncoder):
 
 def db_conn():
     return psycopg2.connect(app.config['DB_URI'])
+
+
+def redis_conn():
+    return redis.StrictRedis.from_url(app.config['REDIS_URI'], charset='utf-8')
+
+
+def redis_publish(conn, channel, message):
+    conn.publish(channel, json.dumps(message, cls=DateTimeEncoder, ensure_ascii=False).encode('utf-8'))
 
 
 def flatten(d, parent_key='', sep='_'):

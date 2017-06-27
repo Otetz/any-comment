@@ -35,9 +35,10 @@ def comment_validate(data: Optional[Dict[str, Any]] = None) -> (Dict[str, Any], 
         val = data.get(field_name)
         if val is None:
             errors.append("Отсутствует поле '%s'" % field_name)
-        if field_name in ['title', 'text'] and not isinstance(val, str):
+            continue
+        if field_name in ['text'] and not isinstance(val, str):
             errors.append("Поле '%s' не является строкой" % field_name)
-        if field_name == 'userid' and not isinstance(val, int):
+        if field_name in ['userid', 'parentid'] and not isinstance(val, int):
             errors.append("Поле '%s' не является числом" % field_name)
     return data, errors
 
